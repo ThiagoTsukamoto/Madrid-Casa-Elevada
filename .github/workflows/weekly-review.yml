@@ -5,7 +5,11 @@
 # contendo o prompt detalhado de revisão (em .github/REVIEW_PROMPT.md).
 #
 # Como funciona:
-#   1. Esta action cria a Issue automaticamente.
+#   1. Esta action cria a Issue nova e, DEPOIS de criá-la, fecha TODAS as
+#      issues "weekly-review" que ainda estiverem abertas, com um comentário
+#      apontando a nova (auditoria 03/11/2026: 23 issues "security" abertas e
+#      nunca tratadas sinalizavam abandono a quem visita o repositório
+#      público — a primeira rodada fecha as 23 de uma vez).
 #   2. Você abre a Issue e copia o prompt.
 #   3. Cola no Claude Code aberto neste repo (ou no claude.ai).
 #   4. O Claude faz a análise completa e devolve o relatório.
@@ -14,6 +18,12 @@
 #      Issue: a Issue é pública, e um relatório de segurança colado nela
 #      publicaria as falhas ainda abertas (auditoria 24/08/2026).
 #      Na Issue vai só "revisão feita, N achados tratados" — e fecha.
+#
+# Actions fixadas por SHA completo (tag móvel = cadeia de suprimento):
+#   actions/checkout       v4   = 11d5960a326750d5838078e36cf38b85af677262
+#   actions/github-script  v7.1 = f28e40c7f34bde8b3046d885e986cb6290c5673b
+#   Ao atualizar, resolva a tag com `git ls-remote --tags <repo>` e troque
+#   o SHA E o comentário.
 #
 # Trigger manual: vá em Actions → "Refatoração Semanal" → Run workflow.
 # =====================================================================
@@ -26,6 +36,13 @@ on:
     - cron: '3 12 * * 5'
   workflow_dispatch: {}  # permite trigger manual da aba Actions
 
+# Uma execução por vez — duas rodadas no mesmo minuto criariam issues duplicadas.
+concurrency:
+  group: weekly-review
+  cancel-in-progress: false
+
+permissions: {}
+
 jobs:
   create-review-issue:
     runs-on: ubuntu-latest
@@ -33,14 +50,13 @@ jobs:
       issues: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Criar Issue de revisão semanal
-        uses: actions/github-script@v7
+      - name: Criar Issue de revisão semanal (e fechar a anterior)
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const fs = require('fs');
-            const path = require('path');
 
             const promptPath = '.github/REVIEW_PROMPT.md';
             if (!fs.existsSync(promptPath)) {
@@ -76,7 +92,7 @@ jobs:
 
             ## Como usar este prompt
 
-            1. Abra o Claude Code dentro do repositório (\`cd "C:/Projetos/Tabela Madri"\`)
+            1. Abra o Claude Code dentro da pasta do repositório (a cópia que você usa no dia a dia)
             2. Cole **tudo entre os \`---\`** acima
             3. O Claude vai produzir o relatório e **salvá-lo em \`Documents\\Revisoes Madrid\`** (fora do repositório)
             4. ⚠️ **NÃO cole o relatório nesta issue** — ela é pública, e o relatório
@@ -86,9 +102,11 @@ jobs:
 
             ---
 
-            **⏰ Próxima revisão:** sexta-feira que vem, mesma hora.
+            **⏰ Próxima revisão:** sexta-feira que vem, mesma hora. Se esta issue ainda estiver
+            aberta, a rotina fecha-a sozinha ao criar a próxima.
             `;
 
+            // Cria a nova PRIMEIRO — se a criação falhar, nada é fechado.
             const created = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -97,4 +115,24 @@ jobs:
               labels: ['weekly-review', 'tech-debt', 'security']
             });
 
-            core.notice(`Issue #${created.data.number} criada: ${created.data.html_url}`);
+            // Depois fecha TODAS as outras issues da rotina ainda abertas — só pode
+            // haver uma de cada vez (a primeira rodada fecha as 23 acumuladas).
+            const abertas = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'weekly-review', per_page: 100
+            });
+            let fechadas = 0;
+            for (const antiga of abertas) {
+              if (antiga.pull_request || antiga.number === created.data.number) continue;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: antiga.number,
+                body: `Fechada automaticamente: substituída pela #${created.data.number}. Se a revisão desta semana não foi feita, use a nova.`
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: antiga.number,
+                state: 'closed', state_reason: 'not_planned'
+              });
+              fechadas++;
+            }
+
+            core.notice(`Issue #${created.data.number} criada: ${created.data.html_url} (${fechadas} anterior(es) fechada(s))`);

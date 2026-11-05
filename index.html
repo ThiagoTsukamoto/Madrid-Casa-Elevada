@@ -16,14 +16,19 @@
                em <meta> (só vale como header HTTP, que o GitHub Pages não manda).
                O anti-clickjacking real é o frame-buster em JS logo no início.
              - object-src 'none' bloqueia plugins (Flash/Java)
+             - V405 (auditoria): sem 'unsafe-eval' (nenhuma lib usa eval — conferido
+               nos 6 bundles de CDN), img-src sem "https:" genérico (toda imagem é
+               local; o curinga era canal de exfiltração numa injeção futura) e sem
+               *.googleapis.com em script-src (nenhum script vem de lá; o reCAPTCHA
+               do App Check entra por www.google.com quando a chave for preenchida).
              - base-uri 'self' impede injeção de <base href> maliciosa
              ========================================================== -->
         <meta http-equiv="Content-Security-Policy" content="
             default-src 'self';
-            script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.googleapis.com;
+            script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebaseio.com;
             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
             font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
-            img-src 'self' data: blob: https:;
+            img-src 'self' data: blob:;
             connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com https://api.bcb.gov.br https://economia.awesomeapi.com.br https://identitytoolkit.googleapis.com https://securetoken.googleapis.com;
             frame-src 'self' blob:;
 
@@ -34,7 +39,7 @@
         <meta name="referrer" content="strict-origin-when-cross-origin">
 
         <!-- Cache gerido pelo parâmetro ?v= no URL (valor = CURRENT_APP_VERSION, mais abaixo) -->
-        <title>Madrid Casa Elevada | Premium V404</title>
+        <title>Madrid Casa Elevada | Premium V405</title>
 
         <!-- Hint para indexadores: o app interno NÃO deve ser indexado.
              A landing pública (landing.html) é quem fica nas buscas. -->
@@ -60,34 +65,9 @@
         <meta name="twitter:description" content="Lançamento de alto padrão em Luís Eduardo Magalhães — BA. Entrega julho/2027.">
         <meta name="twitter:image" content="https://www.madridcasaelevada.com/fachada-dia.jpg">
 
-        <!-- ===========================================================
-             GA4 / Meta Pixel placeholders (V333)
-             Preencha os IDs para ativar. Vazio = nada é carregado.
-             =========================================================== -->
-        <script>
-            window._GA_MEASUREMENT_ID = "";   // ex: "G-XXXXXXXXXX"
-            window._META_PIXEL_ID     = "";   // ex: "1234567890"
-            (function(){
-                if (window._GA_MEASUREMENT_ID) {
-                    var s = document.createElement('script');
-                    s.async = true;
-                    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + window._GA_MEASUREMENT_ID;
-                    document.head.appendChild(s);
-                    window.dataLayer = window.dataLayer || [];
-                    window.gtag = function(){ window.dataLayer.push(arguments); };
-                    window.gtag('js', new Date());
-                    window.gtag('config', window._GA_MEASUREMENT_ID, { anonymize_ip: true });
-                }
-                if (window._META_PIXEL_ID) {
-                    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-                    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-                    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-                    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-                    document,'script','https://connect.facebook.net/en_US/fbevents.js');
-                    fbq('init', window._META_PIXEL_ID); fbq('track', 'PageView');
-                }
-            })();
-        </script>
+        <!-- V405 (auditoria): o carregador de GA4/Meta Pixel saiu do app — a
+             medição vive só na landing (GA_ID/PIXEL_ID, vigiados pelo validar.js);
+             aqui ele ficava fora da CSP e fora do gate de LGPD. -->
 
         <link rel="icon" href="data:,">
 
@@ -1093,7 +1073,7 @@
             catch (e) { document.documentElement.innerHTML = ''; /* bloqueia tela */ }
         }
 
-        const CURRENT_APP_VERSION = "404";
+        const CURRENT_APP_VERSION = "405";
         const urlParams = new URLSearchParams(window.location.search);
 
         // O desvio do visitante para a landing acontece lá no <head>, antes dos
@@ -1348,9 +1328,19 @@
                     </div>
                     <a href="#" onclick="AppAuth.resetPassword()" class="forgot-pass">Esqueci a senha</a>
                 </div>
+                <!-- V405 (segurança): sem a caixa, a sessão vale só NESTA ABA (morre ao
+                     fechar a aba; outra aba pede a senha) — no computador do plantão, o
+                     próximo a abrir o site entrava como o corretor anterior, sem senha.
+                     Aba restaurada pelo navegador depois de 30 min parada também cai. -->
+                <div class="remember-wrapper" id="keepRow" style="margin-top:-4px;">
+                    <div class="remember-left">
+                        <input type="checkbox" id="keepSignedIn" autocomplete="off">
+                        <label for="keepSignedIn" title="Marque só no seu próprio celular ou computador. Sem marcar, a sessão vale só nesta aba: outra aba ou o link de um aviso pedem a senha de novo. Em computador compartilhado, deixe desmarcado e clique em Sair ao terminar.">Manter conectado neste aparelho</label>
+                    </div>
+                </div>
 
                 <div id="signupAviso" class="hidden" style="font-size:11px; color:rgba(255,255,255,0.78); line-height:1.5; background:rgba(255,255,255,0.08); border-radius:8px; padding:10px 12px; margin-bottom:14px;">
-                    <i class="fas fa-user-clock" style="margin-right:6px; color:var(--brand-gold);"></i>Sua conta é criada na hora, mas o acesso à tabela só é liberado depois da <strong>aprovação do gestor</strong>.
+                    <i class="fas fa-user-clock" style="margin-right:6px; color:var(--brand-gold);"></i>Sua conta é criada na hora. Você recebe um e-mail para <strong>confirmar o endereço</strong> e, depois, o acesso à tabela é <strong>liberado pelo gestor</strong>.
                 </div>
 
                 <button onclick="AppAuth.login()" class="btn-login" id="btnLoginBtn">Entrar no Sistema</button>
@@ -1379,6 +1369,23 @@
             <p style="font-size:13px; line-height:1.6; color:rgba(255,255,255,0.82); margin-bottom:8px;">Seu login (<strong id="pendingEmail"></strong>) está pronto, mas o acesso à tabela precisa ser <strong>liberado pelo gestor</strong>.</p>
             <p style="font-size:12px; line-height:1.6; color:rgba(255,255,255,0.6); margin-bottom:24px;">Assim que o gestor aprovar, esta tela destrava sozinha — pode deixá-la aberta ou voltar mais tarde. Se estiver demorando, fale com seu contato na Madrid pra agilizar.</p>
             <button class="btn-login" style="max-width:280px; margin:0 auto 12px;" onclick="AppAuth.reenviarSolicitacao()"><i class="fas fa-paper-plane" style="margin-right:8px;"></i>Reenviar solicitação</button>
+            <button class="btn-login" style="max-width:280px; margin:0 auto; background:rgba(255,255,255,0.12); color:#fff;" onclick="AppAuth.logout()">Sair</button>
+        </div>
+    </div>
+
+    <!-- V405 (segurança): tela de confirmação de e-mail — conta existe no Auth,
+         mas o endereço ainda não foi confirmado. As rules exigem
+         auth.token.email_verified em todo acesso; esta tela manda o link,
+         confere a cada 5 s e destrava sozinha quando a pessoa clicar. -->
+    <div id="verifyOverlay" style="display:none; position:fixed; inset:0; z-index:9998; background:var(--brand-primary); align-items:center; justify-content:center; padding:20px;">
+        <div style="max-width:440px; width:100%; text-align:center; color:#fff;">
+            <img src="MADRID LOGO BRANCA-01.png" alt="Madrid Casa Elevada" style="width:180px; margin:0 auto 26px; display:block;">
+            <div style="font-size:44px; color:var(--brand-gold); margin-bottom:18px;"><i class="fas fa-envelope-open-text"></i></div>
+            <h2 style="font-size:20px; letter-spacing:0.04em; margin-bottom:12px;">Confirme seu e-mail</h2>
+            <p style="font-size:13px; line-height:1.6; color:rgba(255,255,255,0.82); margin-bottom:8px;">Enviamos um link de confirmação para <strong id="verifyEmail"></strong>. Abra o e-mail e clique no link — esta tela destrava sozinha em seguida.</p>
+            <p id="verifyStatus" style="font-size:12px; line-height:1.6; color:rgba(255,255,255,0.6); margin-bottom:24px;">Enviando o e-mail…</p>
+            <button class="btn-login" style="max-width:280px; margin:0 auto 12px;" onclick="AppAuth._conferirVerificacao && AppAuth._conferirVerificacao()"><i class="fas fa-check" style="margin-right:8px;"></i>Já confirmei</button>
+            <button class="btn-login" style="max-width:280px; margin:0 auto 12px; background:rgba(255,255,255,0.12); color:#fff;" onclick="AppAuth.enviarVerificacao(false)"><i class="fas fa-paper-plane" style="margin-right:8px;"></i>Reenviar e-mail</button>
             <button class="btn-login" style="max-width:280px; margin:0 auto; background:rgba(255,255,255,0.12); color:#fff;" onclick="AppAuth.logout()">Sair</button>
         </div>
     </div>
@@ -2058,7 +2065,7 @@
 
                 <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap: wrap;">
                     <input type="text" id="newAuthNome" class="control-input" placeholder="Nome da pessoa" maxlength="80" style="flex: 1; min-width: 160px;">
-                    <input type="email" id="newAuthEmail" class="control-input" placeholder="Adicionar e-mail manualmente" style="flex: 1; min-width: 200px;">
+                    <input type="email" id="newAuthEmail" class="control-input" placeholder="E-mail de quem já está na equipe" style="flex: 1; min-width: 200px;">
                     <select id="newAuthRole" class="control-input" style="width:150px; flex-shrink: 0;">
                         <option value="corretor">Corretor</option>
                         <option value="gestor">Gestor</option>
@@ -2239,7 +2246,7 @@
         </div>
 
     <script>
-        console.log("LOG: Versão Premium V404");
+        console.log("LOG: Versão Premium V405");
 
         // V371: dicas de toque — clique num ".help-tip" abre o balão com o texto
         // do data-tip; clique em qualquer outro lugar fecha. (title= só existe
@@ -2327,6 +2334,10 @@
             // V399 (faxina): chave de e-mail para nós do Firebase — era copiada
             // inline 24 vezes; TODO encode novo passa por aqui.
             chaveEmail: (e) => String(e || '').replace(/[.#$[\]]/g, '_'),
+            // V405 (auditoria): hash curto (FNV-1a, 8 hex) para guardar no
+            // localStorage a chave de e-mail de quem foi RECUSADO sem gravar o
+            // e-mail em si no aparelho compartilhado. Serve só pra comparar.
+            hashCurto: (s) => { let h = 0x811c9dc5; const t = String(s || ''); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return ('0000000' + h.toString(16)).slice(-8); },
             maskCPF: (v) => {
                 v = v.replace(/\D/g, ""); 
                 if (v.length <= 11) { 
@@ -2514,6 +2525,9 @@
         };
         
         firebase.initializeApp(firebaseConfig);
+        // V405: e-mails do Auth (confirmação de endereço, redefinição de senha)
+        // saem no idioma do aparelho — em português para a equipe.
+        try { firebase.auth().useDeviceLanguage(); } catch (e) {}
 
         // ====== Firebase App Check (V332) ======
         // Cole abaixo o SITE KEY do reCAPTCHA v3 (gerado em
@@ -3177,11 +3191,25 @@
                     AppUI.showError("Esse e-mail pertence a um administrador master.", "E-mail em uso");
                     return;
                 }
-                if (state.permissions && state.permissions[encoded] && state.permissions[encoded].role !== role) {
+                // V405 (auditoria): NÃO pré-cadastra papel para e-mail que ainda não
+                // tem conta. Com o papel já gravado, quem criasse a conta primeiro com
+                // esse e-mail (senha própria) só precisava que o DONO da caixa clicasse
+                // no link "confirme seu e-mail" — e entrava com o papel, sem passar
+                // pela fila. O caminho seguro é pedido → aprovação: a pessoa cria a
+                // conta, confirma o e-mail e aparece em "Solicitações de acesso".
+                if (!(state.permissions && state.permissions[encoded] && state.permissions[encoded].role)) {
+                    const naFila = AppAuthManager._solicitacoesPendentes().some(x => x.email === email);
+                    AppUI.showError(naFila
+                        ? `${email} já criou a conta, confirmou o e-mail e está em "Solicitações de acesso", logo acima nesta aba.\n\nLibere lá com um clique (entra como corretor). Para gestor, promova depois na lista da equipe.`
+                        : `${email} ainda não foi liberado — o acesso só nasce pela fila "Solicitações de acesso" (logo acima, nesta aba).\n\n• Se a pessoa ainda não tem conta: peça para usar "Criar conta" na tela de login e confirmar o e-mail que receber.\n• Se ela já tem conta mas não aparece na fila (pedido recusado antes, conta removida ou pedido que não chegou): peça para entrar no app e clicar em "Reenviar solicitação" na tela de espera.\n\nA fila libera como corretor; para gestor, promova depois nesta lista.`,
+                        "Cadastro pelo pedido de acesso");
+                    return;
+                }
+                if (state.permissions[encoded].role !== role) {
                     if (!confirm(`${email} já está cadastrado como ${state.permissions[encoded].role}. Trocar para ${role}?`)) return;
                 }
                 database.ref('madrid_data/permissions/' + encoded).set(AppAuthManager._entradaPermissao(email, role, nomeNovo, encoded)).then(() => {
-                    AppUI.showToast("Usuário adicionado/atualizado com sucesso!", "success");
+                    AppUI.showToast("Usuário atualizado com sucesso!", "success");
                     document.getElementById('newAuthEmail').value = '';
                     document.getElementById('newAuthNome').value = '';
                 }).catch(err => AppUI.showError("Erro ao gravar: " + err.message));
@@ -3300,7 +3328,9 @@
             // ── V388: fila de aprovação do AUTO-CADASTRO ──
             // Pedidos = registros ACESSO_APP no leads_inbox, deduplicados por
             // e-mail, excluindo quem já tem papel, masters e recusados (a recusa
-            // fica no audit_log; um pedido NOVO depois da recusa reaparece).
+            // fica no audit_log; um pedido NOVO depois da recusa reaparece —
+            // V405: só se for MANUAL, pelo "Reenviar"; o automático da tela de
+            // espera não ressuscita quem o gestor já recusou).
             _solicitacoesPendentes: () => {
                 const inbox = state._leadsInbox || {};
                 const recusados = state._acessosRecusados || {};
@@ -3316,9 +3346,17 @@
                     if (state.permissions && state.permissions[enc] && state.permissions[enc].role) return;
                     if (EMAILS_MASTER.includes(email)) return;
                     const ts = l.ts || 0;
-                    if (recusados[enc] && recusados[enc] >= ts) return;
+                    const rh = AppUtils.hashCurto(enc);
+                    if (recusados[rh] && (recusados[rh] >= ts || l.mensagem === AppAuth._MSG_PEDIDO_AUTO)) return;
                     if (!porEmail[email] || ts > porEmail[email].ts) {
-                        porEmail[email] = { email: email, nome: l.nome || '', fone: l.telefone || '', ts: ts };
+                        // V405 (revisão): pedido automático mais novo vem com telefone
+                        // em zeros (não havia WhatsApp no aparelho) — mantém o real.
+                        const antes = porEmail[email];
+                        const foneNovo = String(l.telefone || '');
+                        const fone = (antes && foneNovo.replace(/[^1-9]/g, '').length === 0) ? antes.fone : foneNovo;
+                        porEmail[email] = { email: email, nome: l.nome || (antes && antes.nome) || '', fone: fone, ts: ts };
+                    } else if (porEmail[email] && String(porEmail[email].fone || '').replace(/[^1-9]/g, '').length === 0 && String(l.telefone || '').replace(/[^1-9]/g, '').length > 0) {
+                        porEmail[email].fone = String(l.telefone);
                     }
                 });
                 return Object.values(porEmail).sort((a, b) => b.ts - a.ts);
@@ -3332,14 +3370,15 @@
                 return Object.keys(inbox)
                     .filter(id => inbox[id] && inbox[id].interesse !== 'ACESSO_APP')
                     .map(id => Object.assign({ _id: id, _lida: lidas.indexOf(id) >= 0 }, inbox[id]))
-                    // V395-fix (revisão): ordenar por `ts` era ordenar por um campo que
-                    // QUALQUER visitante anônimo escolhe (o formulário é público e as
-                    // rules não validam a data) — 15 envios com data no futuro
-                    // empurravam toda mensagem real pra fora do card. A chave do
-                    // Firebase é cronológica e gerada no servidor: não dá pra forjar.
+                    // V405 (auditoria): a ordem volta a ser por `ts` — agora as rules
+                    // exigem `ts === now` (hora do SERVIDOR), então ninguém escolhe a
+                    // data. A ordem por CHAVE (V395) partia de uma premissa falsa: a
+                    // push key nasce no CLIENTE e qualquer chave válida é aceita —
+                    // 200 chaves "-zzzz…" enterravam a janela do limitToLast pra
+                    // sempre. Empate (ts igual/ausente) desempata pela chave.
                     // Não-lidas primeiro, pra que marcar como lida REVELE as antigas.
                     .sort((a, b) => (a._lida === b._lida)
-                        ? String(b._id).localeCompare(String(a._id))
+                        ? (((Number(b.ts) || 0) - (Number(a.ts) || 0)) || String(b._id).localeCompare(String(a._id)))
                         : (a._lida ? 1 : -1));
             },
             // V395-fix (revisão): data confiável. `ts` vem do visitante; só exibe se
@@ -3449,7 +3488,7 @@
                     html += `<div class="acc-req-card" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 0; border-top:1px solid var(--border-color);">
                         <div style="flex:1; min-width:220px;">
                             <div style="font-weight:700;">${AppUtils.escapeHTML(s.nome || '(sem nome)')}</div>
-                            <div style="font-size:12px; color:var(--text-secondary);">${AppUtils.escapeHTML(s.email)}${s.fone ? ' · ' + AppUtils.escapeHTML(s.fone) : ''}${dt ? ' · ' + dt : ''}</div>
+                            <div style="font-size:12px; color:var(--text-secondary);">${AppUtils.escapeHTML(s.email)}${/[1-9]/.test(String(s.fone || '')) ? ' · ' + AppUtils.escapeHTML(s.fone) : ''}${dt ? ' · ' + dt : ''}</div>
                         </div>
                         <button class="btn-primary" style="height:36px; padding:0 14px; font-size:11px;" onclick="AppAuthManager.approveRequest('${AppUtils.escapeJSAttr(s.email)}')"><i class="fas fa-check"></i> Liberar como corretor</button>
                         <button class="btn-secondary" style="height:36px; padding:0 14px; font-size:11px;" onclick="AppAuthManager.rejectRequest('${AppUtils.escapeJSAttr(s.email)}')"><i class="fas fa-times"></i> Recusar</button>
@@ -3488,6 +3527,17 @@
             // V388-fix (revisão): o carimbo de recusa precisa vencer o ts do
             // PEDIDO mesmo se o relógio do solicitante estiver adiantado —
             // senão o pedido nunca some da fila. Usa max(agora, maior ts)+1.
+            // V405 (auditoria): a lista local de recusas passa a ter chaves em HASH
+            // (entradas antigas eram a chave de e-mail em claro) — migra na leitura.
+            _recusasSoHash: (locais) => {
+                const limpo = {};
+                Object.keys(locais || {}).forEach(k => {
+                    const ts = Number(locais[k]) || 0;
+                    if (!ts) return;
+                    limpo[/^[0-9a-f]{8}$/.test(k) ? k : AppUtils.hashCurto(k)] = ts;
+                });
+                return limpo;
+            },
             _marcaRecusado: (email) => {
                 const enc = AppUtils.chaveEmail(email);
                 let maxTs = 0;
@@ -3498,7 +3548,11 @@
                 });
                 const carimbo = Math.max(Date.now(), maxTs + 1);
                 if (!state._acessosRecusados) state._acessosRecusados = {};
-                state._acessosRecusados[enc] = carimbo;
+                // V405 (auditoria): em memória e no localStorage a chave é um
+                // HASH da chave de e-mail — o aparelho do plantão guardava, pra
+                // sempre, o e-mail de todo mundo que o gestor recusou.
+                const rh = AppUtils.hashCurto(enc);
+                state._acessosRecusados[rh] = carimbo;
                 // V399-fix (auditoria): o carimbo no audit_log sai da janela do
                 // limitToLast em semanas (o nó cresce a cada operação) e o pedido
                 // recusado RESSUSCITAVA na fila. Cópia local segura o carimbo
@@ -3508,8 +3562,11 @@
                 // gravação com {} zerado se auto-repara).
                 let locais = {};
                 try { locais = JSON.parse(localStorage.getItem('madrid_recusas') || '{}') || {}; } catch (e) { locais = {}; }
-                locais[enc] = carimbo;
-                try { localStorage.setItem('madrid_recusas', JSON.stringify(locais)); } catch (e) {}
+                locais[rh] = carimbo;
+                try { localStorage.setItem('madrid_recusas', JSON.stringify(AppAuthManager._recusasSoHash(locais))); } catch (e) {}
+                // O nome/WhatsApp que a pessoa digitou no cadastro (se foi neste
+                // aparelho) também não tem por que ficar aqui depois da recusa.
+                try { localStorage.removeItem('madrid_signup_info_' + enc); } catch (e) {}
                 AppAuthManager._auditAcesso('access_rejected', email, carimbo);
             },
             _auditAcesso: (acao, email, ts) => {
@@ -3773,7 +3830,15 @@
                         AppAuth.showPendingScreen();
                         return;
                     }
-                    
+                    // V405 (segurança): aprovado — o nome e o WhatsApp guardados
+                    // pelo cadastro (pra tela de espera reenviar o pedido) não têm
+                    // mais utilidade e não devem ficar num computador compartilhado.
+                    try {
+                        localStorage.removeItem('madrid_signup_info_' + encodedEmail);
+                        localStorage.removeItem('madrid_acesso_solicitado_' + encodedEmail);
+                        localStorage.removeItem(AppAuth._chavePedido(state.user));
+                    } catch (e) {}
+
                     if(state.isAdmin) {
                         document.body.setAttribute('data-admin', 'true');
                         // V332: escapeHTML no que vem do Auth/banco (cinto+suspensórios).
@@ -3793,7 +3858,10 @@
                                     // cofre é o listener dedicado logo abaixo (grant de
                                     // partição vale mesmo sem .read na raiz de proposals).
                                     if (emailKey === 'zz_vendas_reais') return;
-                                    Object.values(userProps).forEach(p => { p._parentKey = emailKey; state.allProposals.push(p); });
+                                    // V405 (auditoria): partição que virou primitivo (string) não
+                                    // pode virar "uma proposta por caractere" e travar a GESTÃO.
+                                    if (!userProps || typeof userProps !== 'object') return;
+                                    Object.values(userProps).forEach(p => { if (p && typeof p === 'object') { p._parentKey = emailKey; state.allProposals.push(p); } });
                                 });
                             }
                             AppCore.filterProposals();
@@ -3852,7 +3920,13 @@
                         // interesse=ACESSO_APP do leads_inbox viram fila na EQUIPE.
                         // V388-fix (revisão): limitToLast — o nó só cresce sob as
                         // rules vivas (create-only); assinar TUDO ficaria pesado.
-                        AppDB._track(database.ref('madrid_data/leads_inbox').limitToLast(200), 'value', snap => {
+                        // V405 (auditoria): janela por `ts` (índice `.indexOn` nas
+                        // rules), não por chave — a push key é gerada no CLIENTE e
+                        // 200 chaves forjadas "-zzzz…" sumiam com a fila de acesso e
+                        // com as mensagens do site pra sempre. Como as rules exigem
+                        // `ts === now`, ninguém se põe no futuro: só um flood AO VIVO
+                        // desloca a janela, e ele envelhece sozinho.
+                        AppDB._track(database.ref('madrid_data/leads_inbox').orderByChild('ts').limitToLast(200), 'value', snap => {
                             // Baseline lido ANTES do render (renderSolicitacoes é
                             // quem grava state._pendentesAntes — fonte única, assim
                             // aprovar/recusar/carregar recusas re-baseiam junto).
@@ -3900,12 +3974,15 @@
                         database.ref('madrid_data/audit_log').limitToLast(1000).once('value').then(s => {
                             const rec = {};
                             try {
-                                const locais = JSON.parse(localStorage.getItem('madrid_recusas') || '{}');
+                                // V405 (auditoria): chaves em HASH (migra as antigas em claro
+                                // e regrava — o e-mail do recusado sai do aparelho).
+                                const locais = AppAuthManager._recusasSoHash(JSON.parse(localStorage.getItem('madrid_recusas') || '{}'));
                                 Object.keys(locais).forEach(k => { rec[k] = locais[k]; });
+                                try { localStorage.setItem('madrid_recusas', JSON.stringify(locais)); } catch (e) {}
                             } catch (e) {}
                             Object.values(s.val() || {}).forEach(a => {
                                 if (a && a.action === 'access_rejected' && a.email) {
-                                    const k = AppUtils.chaveEmail(String(a.email).toLowerCase());
+                                    const k = AppUtils.hashCurto(AppUtils.chaveEmail(String(a.email).toLowerCase()));
                                     if (!rec[k] || (a.timestamp || 0) > rec[k]) rec[k] = a.timestamp || 0;
                                 }
                             });
@@ -3923,7 +4000,8 @@
 
                         AppDB._track(database.ref(`madrid_data/proposals/${encodedEmail}`), 'value', snap => {
                             state.allProposals = [];
-                            if (snap.val()) { Object.values(snap.val()).forEach(p => { p._parentKey = encodedEmail; state.allProposals.push(p); }); }
+                            const minhas = snap.val();
+                            if (minhas && typeof minhas === 'object') { Object.values(minhas).forEach(p => { if (p && typeof p === 'object') { p._parentKey = encodedEmail; state.allProposals.push(p); } }); }
                             AppCore.filterProposals();
                         });
                     }
@@ -3965,7 +4043,12 @@
                                 state.globalMultiplier = (isFinite(m) && m > 0) ? m : 1;
                             }
                             else if (key === 'statusMap') {
-                                state.statusMap = snap.val() || {};
+                                // V405 (revisão): só os 3 valores conhecidos chegam aos
+                                // templates (class/title/onchange) — a whitelist das rules
+                                // é a primeira tranca; esta é a segunda.
+                                const brutoSt = snap.val() || {}; const OK_ST = ['livre', 'reservado', 'vendido'];
+                                state.statusMap = {};
+                                if (brutoSt && typeof brutoSt === 'object') Object.keys(brutoSt).forEach(k => { state.statusMap[k] = OK_ST.includes(brutoSt[k]) ? brutoSt[k] : 'livre'; });
                                 // V372: os itens persistentes do sino dependem do statusMap
                                 // — sem isto, numa corrida de snapshots as reservas vencidas
                                 // não apareciam na primeira carga.
@@ -3986,9 +4069,6 @@
                                     // mesmo sem unidade selecionada (calculate sai cedo).
                                     AppSim.updateExtraVagaSubtotal();
                                     if(!document.getElementById('statusManagerModal').classList.contains('hidden')) AppCore.renderStatusManager();
-                                    // V333: sempre que statusMap ou globalMultiplier mudam, atualiza o feed
-                                    // público que a landing lê em tempo real.
-                                    if (key === 'statusMap' || key === 'globalMultiplier') AppCore.updatePublicStats();
                                 }, 150);
                             }
                         });
@@ -5249,7 +5329,10 @@
                 
                 let msg = `*PROPOSTA COMERCIAL - MADRID CASA ELEVADA*\n\n`;
                 msg += `*Proponente:* ${d.client}\n`;
-                msg += `*CPF/CNPJ:* ${d.cpf}\n`;
+                // V405 (auditoria): o CPF sai do texto do WhatsApp — no computador
+                // do plantão a mensagem vira URL (wa.me/?text=…) e fica no histórico
+                // do navegador; o PDF anexo já traz o CPF.
+                if (d.cpf) msg += `*CPF/CNPJ:* consta na proposta em PDF (anexa)\n`;
                 msg += `*Telefone:* ${d.phone}\n\n`;
                 msg += `*Unidade:* Apto ${d.unit} | ${d.tipo}\n`;
                 msg += `*Área:* ${d.area} m² (priv.) | ${d.areaTotal} m² (total)\n`;
@@ -5373,7 +5456,7 @@
                 }
                 
                 AppUI.setBtnLoading('btnLoginBtn', true, 'Entrar no Sistema');
-                
+
                 // V399-fix (auditoria): sem o try, Safari privado/quota cheia
                 // lançava AQUI — antes do signIn — e o botão girava para sempre.
                 try {
@@ -5383,8 +5466,15 @@
                         localStorage.removeItem('madrid_saved_email');
                     }
                 } catch (err) {}
-                
-                firebase.auth().signInWithEmailAndPassword(e, p).catch(err => { 
+
+                // V405 (segurança): a sessão só sobrevive ao fechamento da ABA se a
+                // pessoa pedir ("Manter conectado neste aparelho"). O padrão do
+                // Firebase era LOCAL — no computador do plantão, quem abrisse o site
+                // depois entrava como o corretor anterior, sem senha.
+                const manter = !!(document.getElementById('keepSignedIn') && document.getElementById('keepSignedIn').checked);
+                AppAuth._marcaSessaoMigrada();
+                AppAuth._marcaSessaoAba(!manter);
+                AppAuth._persistencia(manter).then(() => firebase.auth().signInWithEmailAndPassword(e, p)).catch(err => {
                     AppUI.setBtnLoading('btnLoginBtn', false, 'Entrar no Sistema');
                     // Mensagem genérica em TODOS os casos de credencial (V332).
                     // Antes, "auth/user-disabled" e "auth/invalid-credential" davam
@@ -5446,6 +5536,11 @@
                 // credencial salva num CADASTRO).
                 const rr = document.getElementById('rememberRow');
                 if (rr) rr.classList.toggle('hidden', on);
+                // V405 (auditoria): a caixa "Manter conectado" é do LOGIN — no
+                // cadastro a persistência é sempre de navegador, e a caixa
+                // visível fazia a pessoa achar que escolheu algo.
+                const kr = document.getElementById('keepRow');
+                if (kr) kr.classList.toggle('hidden', on);
                 document.getElementById('loginPass').setAttribute('autocomplete', on ? 'new-password' : 'current-password');
                 if (on) document.getElementById('signupNome').focus();
             },
@@ -5463,30 +5558,48 @@
                 if (!AppAuthManager._isValidEmail(email)) { AppUI.showError("Digite um e-mail válido.", "Criar conta"); return; }
                 if (pass.length < 6) { AppUI.showError("A senha precisa de pelo menos 6 caracteres.", "Criar conta"); return; }
                 AppUI.setBtnLoading('btnSignupBtn', true, 'Criar conta e solicitar acesso');
-                // Guarda nome/fone pra tela de espera conseguir REENVIAR o pedido.
-                // V388-fix (revisão): chaveado POR E-MAIL — em máquina compartilhada
-                // (plantão de vendas), o registro de um usuário anterior suprimia o
-                // auto-reenvio do seguinte e trocava a identidade do pedido.
-                try { localStorage.setItem('madrid_signup_info_' + AppUtils.chaveEmail(email), JSON.stringify({ nome: nome, fone: fone })); } catch (e) {}
-                firebase.auth().createUserWithEmailAndPassword(email, pass).then((cred) => {
+                // V405: cadastro nunca "mantém conectado" — sessão da aba.
+                AppAuth._marcaSessaoMigrada();
+                AppAuth._marcaSessaoAba(true);
+                AppAuth._persistencia(false).then(() => firebase.auth().createUserWithEmailAndPassword(email, pass)).then((cred) => {
+                    // Guarda nome/fone pra tela de espera conseguir REENVIAR o pedido.
+                    // V388-fix (revisão): chaveado POR E-MAIL — em máquina compartilhada
+                    // (plantão de vendas), o registro de um usuário anterior suprimia o
+                    // auto-reenvio do seguinte e trocava a identidade do pedido.
+                    // V405 (auditoria): gravado só DEPOIS de a conta existir — antes
+                    // ficava no aparelho mesmo quando o cadastro falhava.
+                    try { localStorage.setItem('madrid_signup_info_' + AppUtils.chaveEmail(email), JSON.stringify({ nome: nome, fone: fone })); } catch (e) {}
                     // V398: o nome também vai pro cadastro do Firebase Auth — na
                     // lista de usuários do console dá pra ver quem é quem sem
                     // decorar e-mail. Best-effort: falhar aqui não trava o fluxo.
                     try { if (cred && cred.user) cred.user.updateProfile({ displayName: nome }).catch(() => {}); } catch (e) {}
-                    // O onAuthStateChanged assume daqui (load → tela de espera).
-                    AppAuth._registrarSolicitacao(nome, fone, email);
+                    // V405: o onAuthStateChanged assume daqui — primeiro a tela
+                    // "confirme seu e-mail" (manda o link), e só DEPOIS de
+                    // confirmado a tela de espera registra o pedido ao gestor
+                    // (showPendingScreen → _registrarSolicitacao). Pedir antes
+                    // seria recusado pelas rules: ACESSO_APP exige e-mail verificado.
                 }).catch(err => {
                     AppUI.setBtnLoading('btnSignupBtn', false, 'Criar conta e solicitar acesso');
-                    let msg = "Não foi possível criar a conta. Tente novamente.";
-                    if (err.code === 'auth/email-already-in-use') msg = "Este e-mail já tem conta. Clique em 'Voltar ao login' para entrar — ou use 'Esqueci a senha'.";
-                    else if (err.code === 'auth/invalid-email') msg = "E-mail inválido.";
+                    // V405 (segurança): a mesma frase para "e-mail já tem conta" e
+                    // para a falha genérica — a tela de cadastro é pública, e a
+                    // mensagem distinta dizia a qualquer um quais e-mails têm conta
+                    // (enumeração). Quem já tem conta lê a dica de entrar/recuperar.
+                    let msg = "Não foi possível criar a conta com esses dados. Se você já tem conta, clique em 'Voltar ao login' para entrar — ou use 'Esqueci a senha'.";
+                    if (err.code === 'auth/invalid-email') msg = "E-mail inválido.";
                     else if (err.code === 'auth/weak-password') msg = "Senha fraca — use pelo menos 6 caracteres.";
                     else if (err.code === 'auth/network-request-failed') msg = "Erro de conexão. Verifique sua internet.";
                     else if (err.code === 'auth/operation-not-allowed') msg = "Cadastro por e-mail/senha está desativado no Firebase. Avise o gestor.";
                     AppUI.showError(msg, "Criar conta");
                 });
             },
-            _registrarSolicitacao: (nome, fone, email) => {
+            // V405 (revisão): a flag "este aparelho já mandou o pedido" vai em
+            // HASH (sem e-mail no localStorage) e sobrevive ao Sair — senão todo
+            // login de conta pendente re-enviava o pedido.
+            _chavePedido: (email) => 'madrid_pedido_' + AppUtils.hashCurto(AppUtils.chaveEmail(email)),
+            // Texto do pedido automático (tela de espera) — diferente do manual
+            // ("Reenviar") para a recusa do gestor valer contra o automático.
+            _MSG_PEDIDO_AUTO: 'Confirmou o e-mail no aplicativo e aguarda liberação de acesso (pedido automático).',
+            _registrarSolicitacao: (nome, fone, email, manual) => {
                 // Formato exigido pelas rules do leads_inbox (status novo / origem
                 // landing / criação única); interesse=ACESSO_APP é o marcador.
                 // V388-fix (revisão): resolve true/false pro chamador poder ser
@@ -5494,13 +5607,13 @@
                 return database.ref('madrid_data/leads_inbox').push({
                     nome: String(nome).slice(0, 80), telefone: String(fone).slice(0, 25),
                     email: String(email).slice(0, 120),
-                    mensagem: 'Criou login no aplicativo e aguarda liberação de acesso.',
+                    mensagem: manual ? 'Criou login no aplicativo e aguarda liberação de acesso.' : AppAuth._MSG_PEDIDO_AUTO,
                     // V403: hora do SERVIDOR — a rule de leads_inbox agora exige
                     // ts === now (fecha o flood com chave forjada); Date.now() do
                     // cliente seria recusado e o pedido de acesso nunca chegaria.
                     interesse: 'ACESSO_APP', status: 'novo', origem: 'landing', ts: firebase.database.ServerValue.TIMESTAMP
                 }).then(() => {
-                    try { localStorage.setItem('madrid_acesso_solicitado_' + AppUtils.chaveEmail(email), '1'); } catch (e) {}
+                    try { localStorage.setItem(AppAuth._chavePedido(email), '1'); } catch (e) {}
                     return true;
                 }).catch(() => false);
             },
@@ -5514,9 +5627,113 @@
                 if (fone.replace(/\D/g, '').length < 8) fone = (prompt('Seu telefone com DDD:') || '').trim();
                 if (fone.replace(/\D/g, '').length < 8) return;
                 try { localStorage.setItem('madrid_signup_info_' + AppUtils.chaveEmail(state.user), JSON.stringify({ nome: nome, fone: fone })); } catch (e) {}
-                AppAuth._registrarSolicitacao(nome, fone, state.user).then(ok => {
+                AppAuth._registrarSolicitacao(nome, fone, state.user, true).then(ok => {
                     if (ok) AppUI.showToast('Solicitação reenviada ao gestor.', 'success');
                     else AppUI.showError('Não foi possível enviar agora (conexão?). Tente de novo em instantes.', 'Reenviar solicitação');
+                });
+            },
+            // V405 (segurança): persistência da sessão do Firebase Auth — SESSION
+            // por padrão; LOCAL só com a caixa "Manter conectado neste aparelho".
+            // SESSION = sessionStorage: vale por ABA (morre ao fechar a aba; outra
+            // aba pede login) e o navegador RESTAURA a aba com a sessão em
+            // "Continuar de onde parou" e no Ctrl+Shift+T — por isso o carimbo de
+            // atividade abaixo (_abaParadaDemais). Falha aqui (navegador sem
+            // storage) não pode impedir o login: resolve sempre.
+            // V405 (revisão): carimbo de última atividade no MESMO sessionStorage da
+            // sessão — ele volta junto quando o navegador restaura a aba. Se a aba
+            // ficou parada mais que a regra de inatividade (30 min), a sessão cai,
+            // igual cairia se a página tivesse ficado aberta. Só vale para SESSION:
+            // com "Manter conectado" (LOCAL) não há carimbo.
+            _marcaSessaoAba: (sessao) => { try { if (sessao) { sessionStorage.setItem('madrid_sessao_aba', '1'); sessionStorage.setItem('madrid_ultimo_toque', String(Date.now())); } else { sessionStorage.removeItem('madrid_sessao_aba'); sessionStorage.removeItem('madrid_ultimo_toque'); } } catch (e) {} },
+            // V405 (revisão): limpeza do aparelho ao encerrar a sessão — usada pelo
+            // Sair, pelo idle e pelos dois signOut automáticos do onAuthStateChanged
+            // (relogin único e aba restaurada), que antes deixavam o cliente simulado
+            // (nome, CPF, telefone, permutas) no sessionStorage pro próximo da aba.
+            // Mantém 'madrid_saved_email' ("lembrar e-mail"), 'madrid_theme' e a flag
+            // do pedido (madrid_pedido_<hash>) — sem ela, cada login reenviaria.
+            _limpaRastros: () => {
+                try { sessionStorage.removeItem('madrid_app_state'); } catch (e) {}
+                const ch = AppUtils.chaveEmail(state.user);
+                ['madrid_signup_info_', 'madrid_acesso_solicitado_'].forEach(p => { try { localStorage.removeItem(p + ch); } catch (e) {} });
+                try { sessionStorage.removeItem('madrid_verif_enviado_' + ch); } catch (e) {}
+                AppAuth._marcaSessaoAba(false);
+            },
+            _tocaSessaoAba: () => { try { if (sessionStorage.getItem('madrid_sessao_aba') === '1') sessionStorage.setItem('madrid_ultimo_toque', String(Date.now())); } catch (e) {} },
+            _abaParadaDemais: () => { try { if (sessionStorage.getItem('madrid_sessao_aba') !== '1') return false; const t = Number(sessionStorage.getItem('madrid_ultimo_toque') || 0); return !!t && (Date.now() - t) > AppAuth._IDLE_TIMEOUT_MS + 60 * 1000; } catch (e) { return false; } },
+            // V405 (auditoria): marca "este navegador já passou pela V405" — a sessão
+            // herdada (LOCAL, de antes do setPersistence) é encerrada uma única vez.
+            // Sem storage → trata como migrado, senão o signOut viraria um laço.
+            _sessaoJaMigrada: () => { try { return localStorage.getItem('madrid_relogin_v405') === '1'; } catch (e) { return true; } },
+            _marcaSessaoMigrada: () => { try { localStorage.setItem('madrid_relogin_v405', '1'); } catch (e) {} },
+            _persistencia: (manter) => {
+                try {
+                    const P = firebase.auth.Auth.Persistence;
+                    return firebase.auth().setPersistence(manter ? P.LOCAL : P.SESSION).catch(() => {});
+                } catch (e) { return Promise.resolve(); }
+            },
+            // ── V405: CONFIRMAÇÃO DE E-MAIL ──
+            // Conta com e-mail não confirmado só vê esta tela. Manda o link uma
+            // vez por sessão (com reenvio a cada 60 s), confere a cada 5 s se a
+            // pessoa já clicou e, quando confirmou, renova o token (as rules leem
+            // o email_verified DO TOKEN) e recarrega — cai no fluxo normal.
+            _verifPollId: null,
+            _verifUltimoEnvio: 0,
+            showVerifyScreen: (u) => {
+                try {
+                    if (AppAuth._idleTimerId) clearTimeout(AppAuth._idleTimerId);
+                    if (AppAuth._idleTeardown) AppAuth._idleTeardown();
+                } catch (e) {}
+                document.getElementById('appView').style.display = 'none';
+                document.getElementById('loginOverlay').style.display = 'none';
+                const pe = document.getElementById('verifyEmail');
+                if (pe) pe.textContent = state.user;
+                const ov = document.getElementById('verifyOverlay');
+                if (ov) ov.style.display = 'flex';
+                const ldr = document.getElementById('appLoader');
+                if (ldr) { ldr.style.opacity = '0'; setTimeout(() => { ldr.classList.add('hidden'); ldr.style.display = 'none'; }, 400); }
+                // Um envio automático por sessão de navegador e por e-mail — abrir e
+                // fechar a aba não pode virar rajada de e-mails.
+                let jaEnviou = false;
+                try { jaEnviou = sessionStorage.getItem('madrid_verif_enviado_' + AppUtils.chaveEmail(state.user)) === '1'; } catch (e) {}
+                if (!jaEnviou) AppAuth.enviarVerificacao(true);
+                const confere = () => {
+                    const atual = firebase.auth().currentUser;
+                    if (!atual) return;
+                    AppAuth._tocaSessaoAba();
+                    atual.reload().then(() => {
+                        if (!atual.emailVerified) return;
+                        if (AppAuth._verifPollId) { clearInterval(AppAuth._verifPollId); AppAuth._verifPollId = null; }
+                        // Token novo com email_verified=true — só então as rules abrem.
+                        atual.getIdToken(true).then(() => location.reload(), () => location.reload());
+                    }).catch(() => {});
+                };
+                if (AppAuth._verifPollId) clearInterval(AppAuth._verifPollId);
+                AppAuth._verifPollId = setInterval(confere, 5000);
+                document.addEventListener('visibilitychange', () => { if (!document.hidden) confere(); });
+                AppAuth._conferirVerificacao = confere;
+            },
+            _conferirVerificacao: null,
+            enviarVerificacao: (automatico) => {
+                const u = firebase.auth().currentUser;
+                if (!u) return;
+                const agora = Date.now();
+                if (!automatico && agora - AppAuth._verifUltimoEnvio < 60 * 1000) {
+                    AppUI.showToast('Aguarde um minuto antes de pedir outro e-mail.', 'error');
+                    return;
+                }
+                AppAuth._verifUltimoEnvio = agora;
+                u.sendEmailVerification().then(() => {
+                    try { sessionStorage.setItem('madrid_verif_enviado_' + AppUtils.chaveEmail(state.user), '1'); } catch (e) {}
+                    const st = document.getElementById('verifyStatus');
+                    if (st) st.textContent = 'E-mail enviado para ' + state.user + '. Se não aparecer em alguns minutos, olhe a caixa de spam.';
+                    if (!automatico) AppUI.showToast('E-mail de confirmação reenviado.', 'success');
+                }).catch(err => {
+                    const st = document.getElementById('verifyStatus');
+                    const msg = (err && err.code === 'auth/too-many-requests')
+                        ? 'Muitos pedidos seguidos. Aguarde alguns minutos e clique em "Reenviar e-mail".'
+                        : 'Não foi possível enviar o e-mail agora. Verifique a conexão e clique em "Reenviar e-mail".';
+                    if (st) st.textContent = msg;
+                    if (!automatico) AppUI.showError(msg, 'Confirmação de e-mail');
                 });
             },
             // Tela cheia de espera + listener na PRÓPRIA permissão (self-read é
@@ -5539,9 +5756,13 @@
                 if (ov) ov.style.display = 'flex';
                 const ldr = document.getElementById('appLoader');
                 if (ldr) { ldr.style.opacity = '0'; setTimeout(() => { ldr.classList.add('hidden'); ldr.style.display = 'none'; }, 400); }
+                // V405 (revisão): a tela de espera não expõe dado — mantém a sessão da
+                // aba viva enquanto estiver aberta (o idle timer foi desligado acima).
+                AppAuth._tocaSessaoAba();
+                if (!AppAuth._esperaCarimboId) AppAuth._esperaCarimboId = setInterval(AppAuth._tocaSessaoAba, 60 * 1000);
                 const enc = AppUtils.chaveEmail(state.user);
                 AppDB._track(database.ref('madrid_data/permissions/' + enc), 'value', snap => {
-                    if (snap.exists() && snap.val().role) location.reload();
+                    if (snap.exists() && snap.val().role) { AppAuth._tocaSessaoAba(); location.reload(); }
                 }, () => {});
                 // Se este aparelho nunca registrou o pedido DESTE e-mail (ex.: o
                 // push falhou no signup), registra sozinho — o gestor deduplica
@@ -5550,9 +5771,18 @@
                 // o flag de outra pessoa suprimia a rede de segurança e o info
                 // alheio trocava a identidade do pedido.
                 const chaveUser = AppUtils.chaveEmail(state.user);
-                let ja = null; try { ja = localStorage.getItem('madrid_acesso_solicitado_' + chaveUser); } catch (e) {}
+                let ja = null; try { ja = localStorage.getItem(AppAuth._chavePedido(state.user)) || localStorage.getItem('madrid_acesso_solicitado_' + chaveUser); } catch (e) {}
                 let info = null; try { info = JSON.parse(localStorage.getItem('madrid_signup_info_' + chaveUser) || 'null'); } catch (e) {}
-                if (!ja && info && info.nome) AppAuth._registrarSolicitacao(info.nome, (info.fone && info.fone.length >= 8) ? info.fone : '00000000', state.user);
+                // V405 (revisão): o pedido agora só pode subir DEPOIS de o e-mail ser
+                // confirmado (rules) — se a pessoa clicou "Sair" na tela de
+                // confirmação, ou confirmou e entrou por OUTRO aparelho, não há
+                // nome/WhatsApp guardados aqui. O nome do perfil do Firebase Auth
+                // (gravado no cadastro) cobre esses casos; o telefone fica em zeros
+                // e a fila do gestor mantém o telefone real de um pedido anterior.
+                const cu = firebase.auth().currentUser;
+                const nomePed = String((info && info.nome) || (cu && cu.displayName) || '').trim();
+                const fonePed = (info && info.fone && String(info.fone).replace(/\D/g, '').length >= 8) ? info.fone : '00000000';
+                if (!ja && nomePed.length >= 3) AppAuth._registrarSolicitacao(nomePed, fonePed, state.user, false);
             },
             logout: (reason) => {
                 // V391-fix (revisão): o botão "Sair" também descartava a gravação em
@@ -5561,12 +5791,9 @@
                 if (reason !== 'idle' && AppDB._gravacoesPendentes > 0) {
                     if (!confirm('Há uma proposta ainda subindo para o servidor.\n\nSe você sair agora ela será perdida. Sair mesmo assim?')) return;
                 }
-                // Limpa dados sensíveis em storage local antes de sair (V332).
-                try {
-                    sessionStorage.removeItem('madrid_app_state');
-                    // Mantém 'madrid_saved_email' (checkbox "lembrar e-mail")
-                    // e 'madrid_theme' (preferência visual) — não são sensíveis.
-                } catch(e) {}
+                // Limpa dados sensíveis em storage local antes de sair (V332;
+                // V405: num helper só, o mesmo dos signOut automáticos).
+                AppAuth._limpaRastros();
 
                 // V332: desliga TODOS os listeners do Firebase antes do signOut.
                 // Sem isso, callbacks ainda disparam durante o reload (race com
@@ -5621,6 +5848,7 @@
                 // deslogava e a sessão virava eterna num aparelho compartilhado.
                 let adiamentos = 0;
                 const MAX_ADIAMENTOS = 5;   // 5 minutos extras, no máximo
+                let ultimoCarimbo = 0;      // V405 (revisão): carimbo da aba, 1x/min
                 const encerrar = () => {
                     // Gravação em voo: adia em vez de derrubar (a escrita morreria
                     // junto com a página, e o corretor tinha sido instruído a
@@ -5637,6 +5865,8 @@
                 };
                 const reset = () => {
                     adiamentos = 0;
+                    const agoraT = Date.now();
+                    if (agoraT - ultimoCarimbo > 60 * 1000) { ultimoCarimbo = agoraT; AppAuth._tocaSessaoAba(); }
                     if (AppAuth._idleTimerId) clearTimeout(AppAuth._idleTimerId);
                     if (AppAuth._avisoIdleId) clearTimeout(AppAuth._avisoIdleId);
                     AppAuth._avisoIdleId = setTimeout(() => {
@@ -5686,15 +5916,13 @@
                         } catch(e) {}
                     }, 6 * 3600 * 1000);
 
-                    // V333: sync inicial de public_stats (após load + 3s, quando state já está populado)
-                    setTimeout(() => {
-                        try { AppCore.updatePublicStats(); } catch(e) {}
-                    }, 3500);
-                    
                     // Detecção de conexão offline.
                     // V346 (fix leak): registrado via AppDB._track para ser desligado no
                     // logout junto com os outros listeners. Antes era .on() direto e
                     // continuava vivo após signOut, disparando toasts pós-logout.
+                    // V405 (revisão): diferença entre o relógio do aparelho e o do
+                    // servidor — a marca de "lido" do sino usa a hora do servidor.
+                    AppDB._track(firebase.database().ref('.info/serverTimeOffset'), 'value', (snap) => { AppDB._serverOffset = Number(snap.val()) || 0; });
                     AppDB._track(firebase.database().ref('.info/connected'), 'value', (snap) => {
                         if (snap.val() === false) {
                             AppUI.showToast("Conexão perdida. Os dados podem estar desatualizados.", "error");
@@ -6472,8 +6700,8 @@
                 state.vendas = state._vendasFallback || state._vendasOficial || {};
                 AppCore.renderVendas();
                 // V385-fix (revisão): timer PRÓPRIO (compartilhar o _renderDebounceTimer
-                // cancelava o closure dos refs, que carrega updatePublicStats/
-                // renderStatusManager) e nada de renderAll antes do 1º load — o
+                // cancelava o closure dos refs, que carrega renderStatusManager)
+                // e nada de renderAll antes do 1º load — o
                 // primeiro render normal já usa state.vendas.
                 if (isFirstLoad) return;
                 if (_vendasRenderTimer) clearTimeout(_vendasRenderTimer);
@@ -6971,14 +7199,11 @@
                             // sem alerta. Cria a entrada mínima (sem cliente).
                             database.ref('madrid_data/reservas/' + apt).set({
                                 user: state.user,
-                                createdAt: Date.now(),
+                                createdAt: firebase.database.ServerValue.TIMESTAMP,   // V405: hora do servidor (as rules exigem)
                                 expiresAt: Date.now() + 7 * 24 * 3600 * 1000,
                                 note: 'Reserva pelo Painel de Vendas — cliente não registrado'
                             }).catch(() => {});
                         }
-
-                        // V333: atualiza public_stats (lê pela landing)
-                        AppCore.updatePublicStats();
 
                         if (!opts.silent) setTimeout(() => AppCore.renderStatusManager(), 200);
 
@@ -7032,7 +7257,7 @@
                     user: state.user,
                     cliente: cliente,
                     expiresAt: now + SEVEN_DAYS_MS,  // threshold de aviso (não auto-libera)
-                    createdAt: now,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP,   // V405: hora do servidor (as rules exigem)
                     note: obs || 'Reserva manual — aviso em 7 dias'
                 };
                 // V391 (auditoria): são DUAS gravações em nós diferentes e o
@@ -7122,18 +7347,9 @@
             // Caso algum código externo (ex: scheduled task) ainda chame.
             checkExpiredReservations: () => AppCore.checkOldReservations(),
 
-            // V333: Recalcula e grava public_stats (lido pela landing pública).
-            // V370: os números de venda viraram confidenciais e a landing parou de
-            // ler este nó — que ficou SEM nenhum leitor, mas continuava recebendo
-            // contagens + VGV exatos (e é público até as rules novas serem
-            // publicadas). Em vez de replicar dado sensível órfão, o app agora
-            // APAGA o nó nos mesmos gatilhos que antes o atualizavam: o primeiro
-            // gestor que abrir o app já expurga o que está lá. Idempotente.
-            // (Achado da revisão adversarial da V370.)
-            updatePublicStats: () => {
-                if (!state.isAdmin) return;
-                database.ref('madrid_data/public_stats').remove().catch(() => {});
-            },
+            // V405: o antigo updatePublicStats (V333 gravava, V370 passou a apagar o
+            // nó public_stats) saiu — as rules fecharam a escrita do nó morto
+            // (.write false) e o remove() virava PERMISSION_DENIED a cada login.
             showAuditLog: () => {
                 if (!state.isAdmin) { AppUI.showError("Apenas gestores podem ver a auditoria.", "Acesso Negado"); return; }
                 // V396 (auditoria): orderByChild('timestamp') SEM `.indexOn` nas rules
@@ -7157,7 +7373,10 @@
                                 detail = `Apto <strong>${AppUtils.escapeHTML(String(log.unit))}</strong>: <span style="color:var(--text-muted);">${AppUtils.escapeHTML(log.from || '—')}</span> → <strong style="color:var(--brand-primary-text);">${AppUtils.escapeHTML(log.to || '—')}</strong>`;
                             } else if (log.action === 'price_adjustment') {
                                 actionLabel = '<i class="fas fa-chart-line" style="color:var(--brand-gold);"></i> Reajuste de Preço';
-                                const pct = (typeof log.percentage === 'number') ? log.percentage.toFixed(2) : log.percentage;
+                                // V405 (auditoria): era o ÚNICO ${} com dado do banco sem escape
+                                // em todo o index.html — percentage não-numérico entrava cru no
+                                // innerHTML (XSS armazenado por um gestor, pra todo gestor).
+                                const pct = AppUtils.escapeHTML(String((typeof log.percentage === 'number') ? log.percentage.toFixed(2) : (log.percentage == null ? '—' : log.percentage)));
                                 detail = `Aplicado <strong style="color:var(--brand-gold-dark);">${pct}%</strong> — fator ${Number(log.previousMultiplier).toFixed(6)} → <strong>${Number(log.newMultiplier).toFixed(6)}</strong>`;
                             } else if (log.action === 'lead_create') {
                                 actionLabel = '<i class="fas fa-user-plus" style="color:#10B981;"></i> Lead criado';
@@ -8474,6 +8693,11 @@
 
             _encodeEmail: (e) => AppUtils.chaveEmail(e),
             _firstName: (email) => String(email || '').split('@')[0],
+            // V405 (auditoria): o nome exibido sai do e-mail do DONO do slot (campo
+            // que as rules amarram ao token), não de corretorNome (texto livre).
+            _nomeDe: (s) => AppAgenda._firstName((s && s.corretor) || ''),
+            // V405 (auditoria): privado indexado por DONO + id (ver load()).
+            _privDe: (s, id) => AppAgenda._priv[AppAgenda._encodeEmail((s && s.corretor) || state.user) + '/' + id] || {},
             _isNotifiable: (s) => !!s && (state.isAdmin || s.corretor === state.user),
             _isoToday: () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; },
             _brDate: (iso) => (iso && iso.length === 10) ? (iso.substring(8,10) + '/' + iso.substring(5,7)) : (iso || ''),
@@ -8518,10 +8742,16 @@
                 AppDB._track(privRef, 'value', snap => {
                     const val = snap.val() || {};
                     const flat = {};
+                    // V405 (auditoria): o privado é indexado por DONO + id. Achatar só
+                    // por id deixava um corretor gravar visitas/<ele>/<idDoSlotDaAna> e
+                    // o gestor passava a ver (e, ao salvar, a gravar na partição da
+                    // Ana) o cliente/telefone do atacante. As rules também amarram o id
+                    // da visita ao corretor do slot; aqui é a segunda tranca.
                     if (state.isAdmin) {
-                        Object.values(val).forEach(byId => { if (byId && typeof byId === 'object') Object.entries(byId).forEach(([id, d]) => { flat[id] = d; }); });
+                        Object.entries(val).forEach(([ownerKey, byId]) => { if (byId && typeof byId === 'object') Object.entries(byId).forEach(([id, d]) => { flat[ownerKey + '/' + id] = d; }); });
                     } else {
-                        Object.entries(val).forEach(([id, d]) => { flat[id] = d; });
+                        const minha = AppAgenda._encodeEmail(state.user);
+                        Object.entries(val).forEach(([id, d]) => { flat[minha + '/' + id] = d; });
                     }
                     AppAgenda._priv = flat;
                     AppAgenda._afterData();
@@ -8555,8 +8785,9 @@
                         AppAgenda._knownIds.add(id);
                         const s = AppAgenda._slots[id];
                         if (AppAgenda._isNotifiable(s) && s.criadoPor !== state.user) {
-                            const quem = state.isAdmin ? ` (${AppUtils.escapeHTML(s.corretorNome || s.corretor || '')})` : '';
-                            AppUI.showToast(`Nova visita: ${AppAgenda._brDate(s.data)} às ${AppUtils.escapeHTML(s.hora || '')}${quem}`, 'success');
+                            // showToast já escapa a mensagem inteira — não pré-escapar.
+                            const quem = state.isAdmin ? ` (${AppAgenda._nomeDe(s)})` : '';
+                            AppUI.showToast(`Nova visita: ${AppAgenda._brDate(s.data)} às ${s.hora || ''}${quem}`, 'success');
                         }
                     }
                 });
@@ -8613,11 +8844,11 @@
                 }
                 visits.forEach(v => {
                     const canSee = state.isAdmin || v.corretor === state.user;
-                    const corretorTxt = AppUtils.escapeHTML(v.corretorNome || v.corretor || '');
+                    const corretorTxt = AppUtils.escapeHTML(AppAgenda._nomeDe(v));
                     const uni = v.unidade ? ` · Apto ${AppUtils.escapeHTML(v.unidade)}` : '';
                     let main, sub;
                     if (canSee) {
-                        const priv = AppAgenda._priv[v.id] || {};
+                        const priv = AppAgenda._privDe(v, v.id);
                         main = AppUtils.escapeHTML(priv.cliente || 'Cliente');
                         sub = `${corretorTxt}${uni}`;
                     } else {
@@ -8641,7 +8872,7 @@
                 if (id && AppAgenda._slots[id]) {
                     const s = AppAgenda._slots[id];
                     if (!(state.isAdmin || s.corretor === state.user)) { AppUI.showError("Você só pode editar as suas próprias visitas.", "Sem permissão"); return; }
-                    const priv = AppAgenda._priv[id] || {};
+                    const priv = AppAgenda._privDe(s, id);
                     if (title) title.innerHTML = '<i class="fas fa-pen" style="color: var(--brand-gold); margin-right:8px;"></i> Editar Visita';
                     set('visitEditId', id);
                     set('visitCliente', priv.cliente || '');
@@ -8773,10 +9004,10 @@
                 Object.entries(AppAgenda._slots)
                     .filter(([id, s]) => AppAgenda._isNotifiable(s))
                     .forEach(([id, s]) => {
-                        const priv = AppAgenda._priv[id] || {};
+                        const priv = AppAgenda._privDe(s, id);
                         const quem = AppUtils.escapeHTML(priv.cliente || 'Cliente');
                         const uni = s.unidade ? ` · Apto ${AppUtils.escapeHTML(s.unidade)}` : '';
-                        const corr = state.isAdmin ? ` — ${AppUtils.escapeHTML(s.corretorNome || s.corretor || '')}` : '';
+                        const corr = state.isAdmin ? ` — ${AppUtils.escapeHTML(AppAgenda._nomeDe(s))}` : '';
                         if (s.data === hojeISO) {
                             visitasHoje.push({
                                 persist: true, unread: false, ts: 0, icone: 'fa-bell', hoje: true,
@@ -8882,11 +9113,19 @@
             // V364: "lido" = maior criadoEm carregado (ou agora) — independente do relógio
             // do aparelho, senão marcar-como-lido pode não cobrir uma visita recém-criada.
             _markSeen: () => {
-                let mx = Date.now();
-                Object.values(AppAgenda._slots).forEach(s => { const c = Number(s && s.criadoEm) || 0; if (c > mx) mx = c; });
+                // V405 (revisão): "agora" em hora do SERVIDOR (offset do .info) — com
+                // o relógio do aparelho atrasado, o teto prendia avisos da última
+                // hora; adiantado, nasciam avisos já "lidos".
+                const agora = Date.now() + (AppDB._serverOffset || 0);
+                let mx = agora;
+                // V405 (auditoria): um criadoEm/timestamp no FUTURO (dado forjado
+                // antes das rules amarrarem ao relógio do servidor) virava marca de
+                // lido eterna — nenhum aviso novo acendia mais. Teto: agora + 1 h.
+                const teto = agora + 3600000;
+                Object.values(AppAgenda._slots).forEach(s => { const c = Number(s && s.criadoEm) || 0; if (c > mx && c <= teto) mx = c; });
                 // V372: cobre também os timestamps (de SERVIDOR) das propostas —
                 // senão, com relógio local atrasado, o aviso não "morria" nunca.
-                (state.allProposals || []).forEach(p => { const t = Number(p && p.timestamp) || 0; if (t > mx) mx = t; });
+                (state.allProposals || []).forEach(p => { const t = Number(p && p.timestamp) || 0; if (t > mx && t <= teto) mx = t; });
                 AppAgenda._seenTs = mx;
                 try { localStorage.setItem(AppAgenda._seenKey || 'madrid_notif_seen', String(mx)); } catch(e) {}
             },
@@ -9064,6 +9303,10 @@
                 let savedEmail = null;
                 try { savedEmail = localStorage.getItem('madrid_saved_email'); } catch (e) {}
                 if (savedEmail) { document.getElementById('loginEmail').value = savedEmail; document.getElementById('rememberMe').checked = true; }
+                // V405 (auditoria): o Firefox restaura o estado de checkbox no
+                // reload do logout — a caixa "Manter conectado" voltava marcada
+                // pro próximo corretor do plantão. Sempre nasce desmarcada.
+                try { const ks = document.getElementById('keepSignedIn'); if (ks) ks.checked = false; } catch (e) {}
 
                 firebase.auth().onAuthStateChanged((u) => {
                     try {
@@ -9077,9 +9320,39 @@
                             // sempre cai na landing, e o corretor entra pelo link
                             // "Sou corretor". Gravá-la de novo faria o app voltar a
                             // abrir sozinho neste aparelho.
+                            // V405 (segurança): e-mail NÃO confirmado = tela de
+                            // confirmação, nada mais. As rules passaram a exigir
+                            // auth.token.email_verified em todo acesso — sem isso,
+                            // quem registrasse um e-mail que não possui (de um
+                            // corretor pré-cadastrado pelo gestor) herdava o papel.
+                            // V405 (auditoria): sessão herdada de antes da V405 é
+                            // LOCAL (sobrevive ao fechar o navegador) — o setPersistence
+                            // só vale no PRÓXIMO login, que no PC do plantão nunca
+                            // acontecia. Uma única vez por navegador: encerra a sessão
+                            // antiga e pede o login de novo, já com a caixa de escolha.
+                            if (!AppAuth._sessaoJaMigrada()) {
+                                AppAuth._marcaSessaoMigrada();
+                                AppAuth._limpaRastros();
+                                firebase.auth().signOut().then(() => {
+                                    AppUI.showToast('Atualização de segurança: entre de novo. Marque "Manter conectado" só no seu próprio aparelho.', 'info');
+                                }).catch(() => {});
+                                return;
+                            }
+                            // V405 (revisão): aba restaurada pelo navegador depois de
+                            // mais de 30 min parada (sessão SESSION) — encerra, como o
+                            // idle timer faria se a página tivesse ficado aberta.
+                            if (AppAuth._abaParadaDemais()) {
+                                AppAuth._limpaRastros();
+                                firebase.auth().signOut().then(() => {
+                                    AppUI.showToast('Sessão encerrada por inatividade. Faça login novamente.', 'error');
+                                }).catch(() => {});
+                                return;
+                            }
+                            if (!u.emailVerified) { AppAuth.showVerifyScreen(u); return; }
                             AppAuth.initApp();
                         }
                         else { 
+                            AppAuth._marcaSessaoMigrada();
                             const loader = document.getElementById('appLoader'); 
                             if (loader) { loader.style.opacity = '0'; setTimeout(() => { loader.classList.add('hidden'); loader.style.display = 'none'; }, 600); } 
                         }

@@ -11,6 +11,8 @@ REM      A conta certa aparece na tela se o arquivo conta.local.txt
 REM      existir nesta pasta - ele fica so nesta maquina.
 REM   2) Publica o arquivo database.rules.json no Firebase.
 REM   3) Confere sozinho se o site continua funcionando.
+REM   4) Confere se as regras NO AR ficaram iguais ao arquivo (V405:
+REM      "corrigido" so conta depois de publicado E conferido).
 REM
 REM  Se ja estiver logado, ele pula direto para a publicacao.
 REM ============================================================
@@ -32,7 +34,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [1/4] Conferindo o arquivo de regras antes de subir...
+echo [1/5] Conferindo o arquivo de regras antes de subir...
 call node validar.js
 if errorlevel 1 (
     echo.
@@ -43,7 +45,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [2/4] Login no programa do Firebase...
+echo [2/5] Login no programa do Firebase...
 echo.
 echo   ATENCAO: estar logado no SITE do Firebase nao basta. O "firebase" e um
 echo   programa instalado no computador e tem login proprio.
@@ -75,7 +77,7 @@ echo Conta autenticada:
 call firebase login:list
 
 echo.
-echo [3/4] Publicando as regras...
+echo [3/5] Publicando as regras...
 echo.
 call firebase deploy --only database
 if errorlevel 1 (
@@ -89,7 +91,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [4/4] Conferindo se o site continua funcionando...
+echo [4/5] Conferindo se o site continua funcionando...
 echo.
 echo   O cronograma da obra PRECISA aparecer (a landing le ele sem login):
 curl -s "%DB%/madrid_data/cronograma.json?shallow=true"
@@ -100,12 +102,30 @@ curl -s "%DB%/madrid_data/units.json?shallow=true"
 echo.
 echo.
 echo   Os contratos PRECISAM dar "Permission denied":
-curl -s "%DB%/proposals/zz_vendas_reais.json?shallow=true"
+curl -s "%DB%/madrid_data/proposals/zz_vendas_reais.json?shallow=true"
 echo.
 
 echo.
+echo [5/5] Conferindo se as regras NO AR sao identicas ao arquivo...
+call firebase database:get "/.settings/rules" --instance madrid-casa-elevada-default-rtdb > "%TEMP%\madrid_rules_vivas.json"
+if errorlevel 1 (
+    echo.
+    echo [ERRO] Nao consegui baixar as regras do ar para conferir. Avise o Claude.
+    echo.
+    pause
+    exit /b 1
+)
+node -e "const fs=require('fs');const s=f=>JSON.stringify(JSON.parse(fs.readFileSync(f,'utf8').replace(/\/\/[^\n]*/g,'')));const ok=s(process.env.TEMP+'/madrid_rules_vivas.json')===s('database.rules.json');console.log(ok?'  IDENTICAS - as regras no ar sao as do arquivo.':'  DIFERENTES - as regras no ar NAO sao as do arquivo!');process.exit(ok?0:1)"
+if errorlevel 1 (
+    echo.
+    echo [ERRO] As regras no ar nao batem com o arquivo. NAO considere publicado - avise o Claude.
+    echo.
+    pause
+    exit /b 1
+)
+echo.
 echo ============================================================
-echo  PRONTO! As regras foram publicadas.
+echo  PRONTO! As regras foram publicadas E conferidas.
 echo.
 echo  Confira as 3 linhas acima:
 echo    - a primeira tem que mostrar etapas/percentual

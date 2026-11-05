@@ -198,7 +198,9 @@ checar('cronograma da obra avisa antes de descartar',
 // ─────────────────────────────────────────────────────────────
 // Números que o gestor já usou e desativou. Voltar a um deles manda o lead
 // para uma linha que ninguém atende — e nada na tela denuncia isso.
-const APOSENTADOS = ['5577988669009'];   // aposentado em 17/08/2026
+// V405 (auditoria): só os 4 últimos dígitos — o número inteiro não precisa viver
+// num arquivo do repositório público (basta pra reconhecer o reuso).
+const APOSENTADOS_SUFIXO = ['9009'];   // aposentado em 17/08/2026
 
 // Pega a declaração REAL (ignora linha comentada): se alguém deixar a antiga
 // comentada logo acima, um match simples leria o número velho e aprovaria tudo.
@@ -215,7 +217,7 @@ if (mWa) {
         `"${mWa[1]}" — tem que ser 55 + DDD (2) + 9 + 8 dígitos, só números. ` +
         'Faltando o 9 do celular, o link abre em erro e TODO lead se perde calado');
     checar('não voltou para um número aposentado',
-        !APOSENTADOS.includes(mWa[1]),
+        !APOSENTADOS_SUFIXO.some(s => mWa[1].endsWith(s)),
         `${mWa[1]} foi desativado — o gestor não atende mais nele`);
 }
 // V397: a regra mudou de "proibido escrever o número" para "todo número escrito
@@ -553,7 +555,8 @@ checar('cronograma da landing lê com .once (não segura conexão)',
 // agenda, master_admins) abrem pra conta não aprovada. Achado g9 da V398.
 const rulesFlat = rulesRaw.replace(/\s+/g, ' ');
 checar('rules: dono escreve só o próprio nome — e só se JÁ tem papel',
-    /"nome": \{ "\.write": "auth != null && \$emailKey === auth\.token\.email/.test(rulesFlat) &&
+    // V405: a cláusula email_verified entrou entre o auth != null e a chave.
+    /"nome": \{ "\.write": "auth != null && auth\.token\.email_verified === true && \$emailKey === auth\.token\.email/.test(rulesFlat) &&
     /&& data\.parent\(\)\.child\('role'\)\.exists\(\)/.test(rulesFlat),
     'sem o exists(role) no .write, conta não aprovada se auto-provisiona e lê o banco inteiro');
 checar('rules: validate do nome exige tamanho 2..80 E entrada com papel',
@@ -688,6 +691,259 @@ checar('salvar visita tem trava de voo com feedback',
         temSelect && predicados === 2 && usos >= 5 && restaura,
         `select=${temSelect} predicados=${predicados}/2 getElementById=${usos}/5 loadState=${restaura}`);
 });
+
+// ─────────────────────────────────────────────────────────────
+// 8b. SEGURANÇA V405 — e-mail confirmado e sessão
+// ─────────────────────────────────────────────────────────────
+// Toda regra que concede algo a "auth != null" tem que exigir também o e-mail
+// verificado: sem isso, quem registra um e-mail que não possui (pré-cadastrado
+// pelo gestor) herda o papel. Confere predicado por predicado, não por grep.
+{
+    // Revisão V405: varre TODO .read/.write que não seja false — um predicado novo
+    // escrito de outro jeito ("auth.uid != null", true…) não pode escapar da
+    // contagem. true só é aceito no cronograma (público de propósito).
+    let semVerif = [], comAuth = 0, abertos = [];
+    (function conf(no, p) {
+        for (const k of Object.keys(no)) {
+            const v = no[k];
+            if (k === '.read' || k === '.write') {
+                if (v === false) continue;
+                if (v === true) { if (p + '/' + k !== '/rules/madrid_data/cronograma/.read') abertos.push(p + '/' + k); continue; }
+                comAuth++;
+                if (typeof v !== 'string' || !v.includes('auth.token.email_verified === true')) semVerif.push(p + '/' + k);
+            } else if (v && typeof v === 'object') conf(v, p + '/' + k);
+        }
+    })(JSON.parse(rulesRaw), '');
+    checar('rules: todo .read/.write (exceto false e o cronograma público) exige email_verified (' + comAuth + ' predicados)',
+        comAuth >= 48 && semVerif.length === 0 && abertos.length === 0,
+        (semVerif.length ? 'sem a cláusula em: ' + semVerif.join(', ') : '') + (abertos.length ? ' | liberado (true) fora do cronograma: ' + abertos.join(', ') : ''));
+    const selfRead = (JSON.parse(rulesRaw).rules.madrid_data.permissions.$emailKey || {})['.read'] || '';
+    checar('rules: self-read de permissions confere o e-mail (colisão de chave)',
+        selfRead.includes("(!data.exists() || data.child('email').val() === auth.token.email)"),
+        'o gêmeo-underscore lia role/email/nome do aprovado');
+}
+// O app tem que (a) barrar conta sem e-mail confirmado ANTES do initApp, (b) mandar
+// o link, (c) renovar o token quando confirmar (as rules leem o token), (d) não
+// registrar o pedido de acesso antes da confirmação, (e) escolher a persistência.
+checar('app: conta sem e-mail confirmado cai na tela de confirmação antes do initApp',
+    /if \(!u\.emailVerified\) \{ AppAuth\.showVerifyScreen\(u\); return; \}\s*AppAuth\.initApp\(\);/.test(idx),
+    'a verificação tem que vir antes de AppAuth.initApp() no onAuthStateChanged');
+checar('app: tela de confirmação envia o link e renova o token ao confirmar',
+    idx.includes('u.sendEmailVerification()') && idx.includes('atual.getIdToken(true).then(() => location.reload()') && idx.includes('id="verifyOverlay"'),
+    'sem getIdToken(true) as rules continuam vendo email_verified=false');
+checar('app: cadastro não registra o pedido antes da confirmação do e-mail',
+    (idx.match(/AppAuth\._registrarSolicitacao\(/g) || []).length === 2,
+    'só a tela de espera (showPendingScreen) e o botão Reenviar podem chamar _registrarSolicitacao');
+checar('app: login e cadastro escolhem a persistência da sessão (SESSION por padrão)',
+    idx.includes('AppAuth._persistencia(manter).then(() => firebase.auth().signInWithEmailAndPassword(') &&
+    idx.includes('AppAuth._persistencia(false).then(() => firebase.auth().createUserWithEmailAndPassword(') &&
+    idx.includes('P.LOCAL : P.SESSION') && idx.includes('id="keepSignedIn"'),
+    'sem setPersistence a sessão fica LOCAL e o PC do plantão abre como o corretor anterior');
+
+// ─────────────────────────────────────────────────────────────
+// 8e. SEGURANÇA V405 — achados da auditoria de 03/11/2026 (8 lentes)
+// ─────────────────────────────────────────────────────────────
+// Cada item abaixo foi um defeito CONFIRMADO por dois revisores independentes.
+// A checagem pina a correção para a próxima edição não desfazê-la em silêncio.
+{
+    const R = JSON.parse(rulesRaw).rules.madrid_data;
+    const DEC = "auth.token.email.replace('.','_').replace('#','_').replace('$','_').replace('[','_').replace(']','_')";
+    const APROV = "root.child('madrid_data/permissions/' + " + DEC + " + '/email').val() === auth.token.email";
+    // (1) agenda: conta registrada mas NÃO aprovada gravava visitas na agenda de todos.
+    const agW = R.agenda['$id']['.write'] || '';
+    checar('rules: agenda/$id — o ramo do corretor exige conta aprovada, chave push e criadoPor === token (e só edita/apaga o próprio)',
+        agW.endsWith("|| (" + APROV + " && (!data.exists() ? ($id.matches(/^-[A-Za-z0-9_-]{19}$/) && newData.child('corretor').val() === auth.token.email && newData.child('criadoPor').val() === auth.token.email) : (data.child('corretor').val() === auth.token.email && (!newData.exists() || newData.child('corretor').val() === auth.token.email)))))"),
+        'sem o check de permissions/<chave>/email, qualquer conta auto-cadastrada enche a agenda do time');
+    checar('rules: agenda — corretorNome/criadoPor/criadoEm amarrados (nome do dono, autor = token, hora do servidor)',
+        (R.agenda['$id'].corretorNome['.validate'] || '').includes("newData.parent().child('corretor').val().beginsWith(newData.val() + '@')") &&
+        R.agenda['$id'].criadoPor['.validate'] === "newData.isString() && newData.val() === auth.token.email" &&
+        (R.agenda['$id'].criadoEm['.validate'] || '').includes('newData.val() === now'),
+        'corretor assinava visita com o nome do colega e criadoEm no futuro matava o sino de todo mundo');
+    // (2) visitas: id do privado amarrado ao corretor do slot (colisão entre partições).
+    const visV = R.visitas['$emailKey']['$id']['.validate'] || '';
+    // Revisão V405: a chave vem do e-mail do PRÓPRIO slot (não de permissions) —
+    // consultar permissions impedia o gestor de editar visita de corretor removido.
+    checar('rules: visitas/$id — id de push e amarrado à chave do corretor do slot em agenda/$id',
+        visV.includes('$id.matches(/^-[A-Za-z0-9_-]{19}$/)') &&
+        visV.includes("(root.child('madrid_data/agenda/' + $id + '/corretor').isString() && root.child('madrid_data/agenda/' + $id + '/corretor').val().replace('.','_').replace('#','_').replace('$','_').replace('[','_').replace(']','_') === $emailKey)") &&
+        !visV.includes("root.child('madrid_data/permissions/' + $emailKey"),
+        'corretor gravava visitas/<ele>/<idDoSlotDeOutro> e o gestor via o telefone do atacante no lugar do cliente');
+    checar('rules: proposals/$emailKey e visitas/$emailKey não aceitam primitivo (hasChildren)',
+        R.proposals['$emailKey']['.validate'] === 'newData.hasChildren()' && R.visitas['$emailKey']['.validate'] === 'newData.hasChildren()',
+        'uma string de 8 MB na partição virava "uma proposta por caractere" e travava a GESTÃO de todo gestor');
+    // (3) proposals: lista fechada, plan só string, corretor = token, timestamps do servidor; cofre à parte.
+    const pid = R.proposals['$emailKey']['$propId'];
+    checar('rules: proposals — plan só string, $other fechado, corretor === token, timestamp/status_ts = servidor',
+        pid.plan['.validate'] === 'newData.isString() && newData.val().length <= 8000' &&
+        pid['$other']['.validate'] === false &&
+        (pid.corretor['.validate'] || '').endsWith('newData.val() === auth.token.email') &&
+        pid.timestamp['.validate'] === 'newData.isNumber() && (newData.val() === now || newData.val() === data.val())' &&
+        pid.status_ts['.validate'] === 'newData.isNumber() && (newData.val() === now || newData.val() === data.val())',
+        '"!newData.isString() ||" deixava objeto sem teto; corretor/timestamp livres escondiam e atribuíam propostas');
+    checar('rules: cofre zz_vendas_reais declarado à parte, com lista fechada de campos',
+        !!R.proposals.zz_vendas_reais && R.proposals.zz_vendas_reais['$key']['$other']['.validate'] === false,
+        'sem o nó literal, o cofre cai no wildcard do corretor e a lista fechada quebra a importação');
+    let naoString = [];
+    (function v(no, p) { Object.keys(no).forEach(k => { const x = no[k]; if (k === '.validate' && typeof x === 'string' && x.startsWith('!newData.isString() ||')) naoString.push(p); if (x && typeof x === 'object') v(x, p + '/' + k); }); })(R, '');
+    checar('rules: nenhum .validate do tipo "!newData.isString() || …" (teto que objeto contorna)', naoString.length === 0, 'em: ' + naoString.join(', '));
+    // (4) permissions: gestor nunca escreve o nó inteiro; entrada validada; sem auto-rebaixamento.
+    checar('rules: permissions — gestor escreve só em $emailKey (nó inteiro = master), com validate de email/role',
+        !String(R.permissions['.write']).includes("'gestor'") &&
+        String(R.permissions['$emailKey']['.write']).includes("($emailKey !== " + DEC + " || (newData.exists() && newData.child('role').val() === 'gestor' && newData.child('email').val() === auth.token.email))") &&
+        String(R.permissions['$emailKey']['.validate']).includes("newData.child('role').val().matches(/^(corretor|gestor)$/)") &&
+        String(R.permissions['$emailKey']['.validate']).includes("=== $emailKey") &&
+        R.permissions['$emailKey']['$other']['.validate'] === false,
+        'um set(null) em permissions trancava as 9 contas (master_admins está vazio)');
+    // (5) reservas: PII de prospect só pra gestor; sem apagar o nó inteiro.
+    checar('rules: reservas — leitura só gestor/master, escrita por $apt, cliente declarado, $other fechado',
+        String(R.reservas['.read']).includes("'/role').val() === 'gestor'") && !R.reservas['.write'] &&
+        !!R.reservas['$apt']['.write'] && !!R.reservas['$apt'].cliente && R.reservas['$apt']['$other']['.validate'] === false &&
+        String(R.reservas['$apt'].createdAt['.validate']).includes('newData.val() === now'),
+        'corretor lia nome/observação/autor de TODAS as reservas via REST (a UI escondia, a rule não)');
+    // (6) nós inteiros do gestor: set(null) negado; units validado; nós mortos fechados.
+    ['units', 'statusMap', 'vendas', 'cronograma'].forEach(no => checar(`rules: ${no} — apagar o nó inteiro é negado (newData.exists())`,
+        String(R[no]['.write']).endsWith(' && newData.exists()'), 'um set(null) no console do gestor zerava o nó (backup é manual, mensal)'));
+    checar('rules: units/$apt validado (chave numérica, valor numérico com teto, $other só primitivo curto)',
+        !!R.units['$apt'] && R.units['$apt']['.validate'] === '$apt.matches(/^[0-9]{3,4}$/)' &&
+        String(R.units['$apt'].valor['.validate']).includes('newData.val() < 100000000') &&
+        R.units['$apt']['$other']['.validate'] === '(newData.isString() && newData.val().length <= 60) || newData.isNumber() || newData.isBoolean()',
+        'units/1404/valor = "abc" virava R$ NaN na tabela e nos PDFs dos clientes');
+    checar('rules: cronograma (público) com lista fechada de campos', R.cronograma['$other']['.validate'] === false && R.cronograma.etapas['$idx']['$other']['.validate'] === false,
+        'cronograma/dump = <qualquer coisa> publicava conteúdo arbitrário legível por anônimo');
+    ['metas', 'leads', 'public_stats'].forEach(no => checar(`rules: ${no} (nó morto) não aceita escrita`, R[no]['.write'] === false, 'superfície morta continuava gravável'));
+    // (7) audit_log tipado; price_history fechado.
+    const au = R.audit_log['$auditId'];
+    checar('rules: audit_log — campos tipados ($other fechado), id de push, timestamp plausível, expurgo só master',
+        au['$other']['.validate'] === false && au.percentage['.validate'] === 'newData.isNumber()' &&
+        String(au['.validate']).includes('$auditId.matches(/^-[A-Za-z0-9_-]{19}$/)') &&
+        String(au.timestamp['.validate']).includes('newData.val() < now + 31622400000') &&
+        String(au['.write']).includes("(!newData.exists() && root.child('madrid_data/master_admins/'"),
+        'percentage sem tipo era XSS armazenado indelével na Trilha de Auditoria');
+    checar('rules: price_history com lista fechada e tetos', R.price_history['$snapId']['$other']['.validate'] === false &&
+        String(R.price_history['$snapId'].vgv_after['.validate']).includes('< 1000000000000'));
+    // (8) leads_inbox: janela por ts (hora do servidor), não por chave forjável.
+    checar('rules + app: fila do inbox ordenada por ts (índice nas rules, orderByChild no app)',
+        Array.isArray(R.leads_inbox['.indexOn']) && R.leads_inbox['.indexOn'].includes('ts') &&
+        idx.includes("database.ref('madrid_data/leads_inbox').orderByChild('ts').limitToLast(200)") &&
+        !idx.includes("database.ref('madrid_data/leads_inbox').limitToLast(200)"),
+        '200 chaves "-zzzz…" (push key nasce no CLIENTE) enterravam a fila de acesso e as mensagens do site pra sempre');
+    checar('rules: logs/$date só aceita data AAAA-MM-DD', String(R.logs['$date']['.validate']).includes('$date.matches('), 'logs/<qualquer texto>/<chave> sem fim');
+}
+// (9) App — as mesmas falhas pelo lado do cliente.
+checar('app: Trilha de Auditoria escapa percentage (único ${} sem escape do arquivo)',
+    idx.includes("const pct = AppUtils.escapeHTML(String((typeof log.percentage === 'number')"),
+    'percentage não-numérico entrava cru no innerHTML — XSS armazenado de gestor pra gestor');
+checar('app: privado da visita indexado por dono+id (só _privDe lê AppAgenda._priv)',
+    (idx.match(/AppAgenda\._priv\[/g) || []).length === 1 && idx.includes("flat[ownerKey + '/' + id] = d") &&
+    (idx.match(/AppAgenda\._privDe\(/g) || []).length === 3,
+    'achatar por id deixava o gestor ver (e gravar) o cliente do atacante na visita da vítima');
+checar('app: nome exibido na agenda/sino/toast vem do e-mail do dono (não de corretorNome)',
+    !/escapeHTML\([sv]\.corretorNome \|\| [sv]\.corretor/.test(idx) && (idx.match(/AppAgenda\._nomeDe\(/g) || []).length >= 3,
+    'corretorNome é texto livre — corretor assinava visita com o nome do colega');
+checar('app: marca de lido ignora criadoEm/timestamp no futuro',
+    idx.includes('if (c > mx && c <= teto) mx = c;') && idx.includes('if (t > mx && t <= teto) mx = t;'),
+    'um timestamp 9e15 virava marca de lido eterna — nenhum aviso acendia mais');
+checar('app: listeners de propostas ignoram partição que não é objeto',
+    idx.includes("if (!userProps || typeof userProps !== 'object') return;") && idx.includes("if (minhas && typeof minhas === 'object')"),
+    'Object.values("string") virava uma proposta por caractere');
+checar('app: CPF fora do texto do WhatsApp (vira URL no PC do plantão)',
+    (() => {
+        const ini = idx.indexOf('sendWhatsApp: () => {'), fim = idx.indexOf('_whatsFallback: (', ini);
+        if (ini < 0 || fim < 0) return false;
+        const linhasMsg = idx.slice(ini, fim).split('\n').filter(l => /\bmsg\s*\+?=/.test(l));
+        return linhasMsg.length > 5 && linhasMsg.filter(l => /cpf/i.test(l) && !l.includes('consta na proposta em PDF (anexa)')).length === 0 &&
+            idx.includes('consta na proposta em PDF (anexa)');
+    })(),
+    'nome+CPF+telefone+valor ficavam no histórico do navegador compartilhado e chegavam ao wa.me');
+checar('app: CSP sem unsafe-eval, sem img-src https: genérico, sem *.googleapis.com em script-src',
+    (() => { const csp = (idx.match(/Content-Security-Policy"\s+content="([\s\S]*?)"/) || [])[1] || ''; const b = (n) => (csp.match(new RegExp(n + '([^;]*)')) || [])[1] || '';
+        return csp && !b('script-src').includes("'unsafe-eval'") && !b('script-src').includes('*.googleapis.com') && !/\shttps:(\s|$)/.test(b('img-src')); })(),
+    'nenhuma lib usa eval e nenhuma imagem é externa — os curingas só ampliavam o dano de uma injeção futura');
+checar('app: carregador GA4/Pixel não existe mais no index.html (medição só na landing)',
+    !idx.includes('_GA_MEASUREMENT_ID') && !idx.includes('_META_PIXEL_ID') &&
+    !/googletagmanager\.com|google-analytics\.com|connect\.facebook\.net|\bgtag\(|\bfbq\(/.test(idx),
+    'ele ficava fora da CSP e fora do gate de LGPD do validar');
+checar('app: caixa "Manter conectado" sem autocomplete, zerada no boot e escondida no cadastro',
+    idx.includes('id="keepSignedIn" autocomplete="off"') && idx.includes('if (ks) ks.checked = false;') &&
+    /const kr = document\.getElementById\('keepRow'\);\s*if \(kr\) kr\.classList\.toggle\('hidden', on\);/.test(idx),
+    'o Firefox restaurava a caixa marcada no reload do logout — o próximo corretor ficava com sessão LOCAL');
+checar('app: sessão herdada de antes da V405 é encerrada uma vez (relogin único)',
+    /if \(!AppAuth\._sessaoJaMigrada\(\)\) \{\s*AppAuth\._marcaSessaoMigrada\(\);\s*AppAuth\._limpaRastros\(\);\s*firebase\.auth\(\)\.signOut\(\)/.test(idx) &&
+    (idx.match(/AppAuth\._marcaSessaoMigrada\(\);/g) || []).length >= 4 &&
+    /_sessaoJaMigrada: \(\) => \{ try \{ return localStorage\.getItem\('madrid_relogin_v405'\) === '1'; \} catch \(e\) \{ return true; \} \}/.test(idx),
+    'setPersistence só vale no PRÓXIMO login — o PC do plantão nunca passava por ele');
+checar('app: addUser não pré-cadastra papel para e-mail sem conta (papel só pela fila de pedidos)',
+    (() => {
+        const m = idx.match(/if \(!\(state\.permissions && state\.permissions\[encoded\] && state\.permissions\[encoded\]\.role\)\) \{([\s\S]{0,2500}?)"Cadastro pelo pedido de acesso"\);\s*return;\s*\}/);
+        return !!m && !/confirm\(|\.set\(|\.update\(/.test(m[1]);
+    })(),
+    'com o papel pré-gravado, um clique do dono da caixa no link "confirme seu e-mail" entregava o papel ao impostor');
+checar('app: recusas locais em hash (sem e-mail de terceiros no localStorage) e migração das antigas',
+    idx.includes('hashCurto: (s) =>') && idx.includes('locais[rh] = carimbo;') && !idx.includes('locais[enc] = carimbo;') &&
+    idx.includes('_recusasSoHash: (locais) =>') && idx.includes('const k = AppUtils.hashCurto(AppUtils.chaveEmail(String(a.email).toLowerCase()));'),
+    'madrid_recusas guardava a chave de e-mail de todo recusado, pra sempre, no aparelho do plantão');
+checar('app: logout apaga nome/WhatsApp do cadastro e flags do pedido do usuário; cadastro grava só após criar a conta',
+    idx.includes("['madrid_signup_info_', 'madrid_acesso_solicitado_'].forEach(p => { try { localStorage.removeItem(p + ch); } catch (e) {} });") &&
+    /createUserWithEmailAndPassword\(email, pass\)\)\.then\(\(cred\) => \{[\s\S]{0,900}?localStorage\.setItem\('madrid_signup_info_'/.test(idx),
+    'nome e WhatsApp ficavam no aparelho mesmo quando o cadastro falhava, e sobreviviam ao Sair');
+checar('app: reservas gravam createdAt com a hora do servidor',
+    (idx.match(/createdAt: firebase\.database\.ServerValue\.TIMESTAMP/g) || []).length === 2 && !/createdAt: (Date\.now\(\)|now),/.test(idx),
+    'as rules exigem createdAt === now; com Date.now() a reserva seria recusada');
+checar('landing: iframe do Maps não manda a URL completa (com utm) ao Google',
+    /output=embed"\s*loading="lazy" referrerpolicy="strict-origin-when-cross-origin"/.test(lnd) && !lnd.includes('referrerpolicy="no-referrer-when-downgrade"'),
+    'referrerpolicy frouxo no iframe entregava ao Google a campanha de cada visitante');
+checar('privacidade cita a origem de campanha (utm) e a Cloudflare (cdnjs)',
+    !!priv && /utm/.test(priv) && /Cloudflare/.test(priv),
+    'a landing grava utm e carrega cdnjs — a política precisa dizer (LGPD)');
+// Revisão V405 (rodada 2) — o que a revisão adversarial do diff achou nas correções.
+checar('app: tela de espera registra o pedido mesmo sem o localStorage do cadastro (nome do perfil)',
+    idx.includes("const nomePed = String((info && info.nome) || (cu && cu.displayName) || '').trim();") &&
+    idx.includes('if (!ja && nomePed.length >= 3) AppAuth._registrarSolicitacao(nomePed, fonePed, state.user, false);') &&
+    idx.includes("_chavePedido: (email) => 'madrid_pedido_' + AppUtils.hashCurto(AppUtils.chaveEmail(email)),"),
+    'quem clicava Sair na tela de confirmação (ou entrava por outro aparelho) nunca chegava à fila do gestor');
+checar('app: recusa do gestor vale contra o pedido AUTOMÁTICO (só o Reenviar manual ressuscita)',
+    idx.includes('if (recusados[rh] && (recusados[rh] >= ts || l.mensagem === AppAuth._MSG_PEDIDO_AUTO)) return;') &&
+    idx.includes('AppAuth._registrarSolicitacao(nome, fone, state.user, true)'),
+    'com o pedido automático a cada login, o recusado voltava sozinho pra fila');
+checar('app: aba restaurada depois de 30 min parada perde a sessão (carimbo no sessionStorage)',
+    /if \(AppAuth\._abaParadaDemais\(\)\) \{[\s\S]{0,300}?firebase\.auth\(\)\.signOut\(\)[\s\S]{0,300}?return;\s*\}\s*if \(!u\.emailVerified\)/.test(idx) &&
+    (idx.match(/AppAuth\._tocaSessaoAba\(\)/g) || []).length >= 3 && idx.includes('AppAuth._marcaSessaoAba(!manter);'),
+    'SESSION é por aba e o navegador restaura a aba com a sessão (Continuar de onde parou, Ctrl+Shift+T)');
+checar('app: signOut automático (relogin único e aba restaurada) limpa o aparelho igual ao Sair',
+    /if \(!AppAuth\._sessaoJaMigrada\(\)\) \{\s*AppAuth\._marcaSessaoMigrada\(\);\s*AppAuth\._limpaRastros\(\);/.test(idx) &&
+    /if \(AppAuth\._abaParadaDemais\(\)\) \{\s*AppAuth\._limpaRastros\(\);/.test(idx) &&
+    /_limpaRastros: \(\) => \{\s*try \{ sessionStorage\.removeItem\('madrid_app_state'\); \} catch \(e\) \{\}/.test(idx) &&
+    (idx.match(/AppAuth\._limpaRastros\(\);/g) || []).length === 3,
+    'sem a limpeza, o cliente simulado (nome, CPF, telefone) ficava na aba para o próximo corretor');
+checar('app: marca de lido do sino em hora do servidor (.info/serverTimeOffset)',
+    idx.includes("ref('.info/serverTimeOffset')") && idx.includes('const agora = Date.now() + (AppDB._serverOffset || 0);'),
+    'com o relógio do aparelho atrasado, o teto de +1 h prendia avisos da última hora');
+checar('app: statusMap normalizado na fonte (só livre/reservado/vendido chegam aos templates)',
+    idx.includes("state.statusMap[k] = OK_ST.includes(brutoSt[k]) ? brutoSt[k] : 'livre';"),
+    'o valor do statusMap cai cru em class/title/onchange — a whitelist das rules não pode ser a única tranca');
+checar('app: não toca mais no nó morto public_stats (as rules negam a escrita)',
+    !idx.includes('madrid_data/public_stats') && !idx.includes('updatePublicStats('),
+    'o remove() virava PERMISSION_DENIED a cada login de gestor');
+checar('rules: audit_log/unit com o mesmo teto do cofre (40) e user === token também na folha',
+    String((JSON.parse(rulesRaw).rules.madrid_data.audit_log['$auditId'].unit || {})['.validate']).endsWith('<= 40') &&
+    String((JSON.parse(rulesRaw).rules.madrid_data.audit_log['$auditId'].user || {})['.validate']).endsWith('newData.val() === auth.token.email'),
+    'unidade de 21–40 caracteres derrubava a importação de contratos inteira (atômica)');
+(function () {
+    const cmd = path.join(DIR, 'publicar-regras.cmd');
+    if (!fs.existsSync(cmd)) { erros.push('publicar-regras.cmd sumiu'); return; }
+    const c = ler('publicar-regras.cmd');
+    checar('publicar-regras.cmd confere no fim se as rules VIVAS são iguais ao arquivo',
+        c.includes('database:get "/.settings/rules"') && c.includes('IDENTICAS') && c.includes('madrid_data/proposals/zz_vendas_reais.json'),
+        '"corrigido" só conta depois de publicado E conferido — a V397/V403 ficaram 2,5 meses só no git');
+})();
+(function () {
+    const wf = path.join(DIR, '.github', 'workflows', 'weekly-review.yml');
+    if (!fs.existsSync(wf)) { avisos.push('weekly-review.yml não existe mais — ok se a rotina semanal foi desligada de propósito'); return; }
+    const y = ler('.github/workflows/weekly-review.yml');
+    checar('workflow semanal: actions fixadas por SHA e sem caminho local no corpo da issue',
+        /uses: actions\/checkout@[0-9a-f]{40}/.test(y) && /uses: actions\/github-script@[0-9a-f]{40}/.test(y) && !/C:\/Projetos/.test(y),
+        'tag móvel (@v4) é supply chain gratuito de fechar; o caminho local do PC do gestor estava público');
+})();
 
 // ─────────────────────────────────────────────────────────────
 // 9. AVISOS (não impedem publicar)

@@ -1,21 +1,46 @@
-# Security Policy
+# Política de segurança — Madrid Casa Elevada
 
-## Supported Versions
+Este repositório publica o site e o app de vendas do empreendimento Madrid Casa Elevada
+(Luís Eduardo Magalhães/BA). O app guarda dados pessoais de clientes e da equipe de vendas;
+levamos a sério qualquer relato de falha.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Como relatar uma vulnerabilidade
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+**Não abra uma issue pública** com detalhes de uma falha — a issue é visível para qualquer
+pessoa e exporia os usuários até a correção sair.
 
-## Reporting a Vulnerability
+Use um destes canais privados:
 
-Use this section to tell people how to report a vulnerability.
+1. o **WhatsApp de atendimento** publicado em <https://www.madridcasaelevada.com/privacidade.html>,
+   dizendo que se trata de um relato de segurança (não descreva a falha pelo WhatsApp; só peça
+   o contato para enviar os detalhes), ou
+2. **GitHub → aba Security → "Report a vulnerability"** — quando o botão aparecer nessa aba
+   (é o reporte privado de vulnerabilidade do GitHub; se ele não estiver visível, use o canal 1).
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Inclua, se puder: o que você encontrou, como reproduzir, qual o impacto e se já contou para
+mais alguém.
+
+## O que esperar
+
+- **Confirmação de recebimento:** em até 3 dias úteis.
+- **Avaliação e plano:** em até 10 dias úteis, dizemos se o relato foi aceito, a gravidade e o
+  prazo de correção.
+- **Correção:** falhas que expõem dados de clientes ou permitem acesso indevido são tratadas
+  antes de qualquer outra coisa; falhas menores entram na próxima versão.
+- **Crédito:** se quiser, seu nome entra no registro da versão que corrige a falha
+  (`agents.md`). Nunca divulgamos quem relatou sem autorização.
+
+## Escopo
+
+- `www.madridcasaelevada.com` (landing, app `?app=1`, política de privacidade)
+- Regras do Realtime Database publicadas (`database.rules.json`)
+- Este repositório (histórico, workflows)
+
+Fora do escopo: ataques de negação de serviço, engenharia social contra a equipe, e qualquer
+teste que crie contas reais, grave ou apague dados no banco de produção — **o banco é o da
+operação real**. Se precisar demonstrar uma escrita, descreva-a; não a execute.
+
+## Versões
+
+Só a versão publicada em `www.madridcasaelevada.com` (a `main` deste repositório) recebe
+correções. Não há versões antigas em uso.

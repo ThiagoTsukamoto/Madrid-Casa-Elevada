@@ -49,7 +49,7 @@ Refaça toda esta lista, **sem confiar em revisões anteriores** (regras podem t
 - **SRI**: hashes Font Awesome / Chart.js / jsPDF ainda batem? (Se versão mudou, recalcule)
 - **Auth bypass**:
   - Toda função admin checa `state.isAdmin` no início?
-  - Cadastro automático segue desativado em `AppDB.logAccess`?
+  - O cadastro é público com aprovação (V388/V405): `logAccess` continua SEM criar permissão; `addUser` continua recusando e-mail sem conta (papel só pela fila "Solicitações de acesso"); `onAuthStateChanged` continua barrando conta sem e-mail confirmado antes do `initApp`?
 - **Vazamento de dados**:
   - `console.log` com dados sensíveis (e-mail, telefone, CPF, valor de proposta)?
   - URLs com query string contendo PII?

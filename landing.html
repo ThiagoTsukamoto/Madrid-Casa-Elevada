@@ -1413,7 +1413,11 @@
             <div class="map-wrap reveal">
                 <iframe
                     src="https://www.google.com/maps?q=-12.0786068,-45.7844094%28Madrid+Casa+Elevada%29&t=k&z=17&hl=pt-BR&output=embed"
-                    loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen title="Vista de satélite do Madrid Casa Elevada — Rua Quito, Jardim Sol Nascente, Luís Eduardo Magalhães"></iframe>
+                    loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="Vista de satélite do Madrid Casa Elevada — Rua Quito, Jardim Sol Nascente, Luís Eduardo Magalhães"></iframe>
+            <!-- V405 (auditoria): referrerpolicy igual ao da página — o antigo
+                 "no-referrer-when-downgrade" mandava ao Google a URL completa da
+                 visita, com os parâmetros utm da campanha. O embed sem chave não
+                 precisa da URL; só da origem. -->
             </div>
             <div class="map-endereco reveal">
                 <span><i class="fas fa-map-marker-alt"></i> Rua Quito · Jardim Sol Nascente · Luís Eduardo Magalhães — BA</span>

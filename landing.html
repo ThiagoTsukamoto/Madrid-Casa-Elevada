@@ -46,9 +46,12 @@
          ========================================================================= -->
 
     <!-- SEO / Open Graph / Schema.org -->
-    <title>Madrid Casa Elevada — Apartamentos de Alto Padrão em Luís Eduardo Magalhães | Entrega Jul/2027</title>
-    <meta name="description" content="Madrid Casa Elevada — Apartamentos premium de 1 e 3 suítes no Jardim Sol Nascente, Luís Eduardo Magalhães — BA. Vagas duplas, escaninho privativo, lazer completo. Entrega julho/2027. Conheça as plantas e simule sua proposta.">
-    <meta name="keywords" content="Madrid Casa Elevada, apartamentos Luís Eduardo Magalhães, Jardim Sol Nascente, lançamento imobiliário LEM, apartamentos 1 suíte, apartamentos 3 suítes, alto padrão Bahia, Torre Madrid SPE">
+    <!-- V406 (SEO): "LEM" e "à venda" entram no título e na descrição — é assim que
+         a cidade procura (Google Trends/Ahrefs, 24/11/2026: "imóveis luis eduardo
+         magalhaes", "apartamento luis eduardo magalhaes", "lem"). -->
+    <title>Madrid Casa Elevada | Apartamentos em LEM – Luís Eduardo Magalhães</title>
+    <meta name="description" content="Apartamentos de 1 e 3 suítes à venda em Luís Eduardo Magalhães (LEM), BA: Rua Quito, Jardim Sol Nascente. Vagas duplas, lazer completo, entrega em jul/2027.">
+    <meta name="keywords" content="Madrid Casa Elevada, Madrid LEM, imóveis LEM, imóveis Luís Eduardo Magalhães, apartamento LEM, apartamentos à venda Luís Eduardo Magalhães, lançamento imobiliário LEM, Jardim Sol Nascente, apartamento 1 suíte, apartamento 3 suítes, alto padrão Bahia, Torre Madrid SPE">
     <meta name="author" content="Torre Madrid Empreendimentos Imobiliários SPE Ltda">
     <meta name="robots" content="index, follow">
     <!-- V386 (auditoria SEO): o canonical apontava pra raiz, que faz 301 pro app
@@ -58,7 +61,7 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="pt_BR">
     <meta property="og:site_name" content="Madrid Casa Elevada">
-    <meta property="og:title" content="Madrid Casa Elevada — Alto Padrão | Luís Eduardo Magalhães">
+    <meta property="og:title" content="Madrid Casa Elevada — Apartamentos em Luís Eduardo Magalhães (LEM)">
     <meta property="og:description" content="Apartamentos premium de 1 e 3 suítes. Vagas duplas, escaninho privativo, lazer completo. Entrega julho/2027.">
     <meta property="og:image" content="https://www.madridcasaelevada.com/fachada-dia.jpg">
     <meta property="og:image:width" content="1600">
@@ -67,36 +70,83 @@
     <meta property="og:url" content="https://www.madridcasaelevada.com/landing.html">
 
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Madrid Casa Elevada — Alto Padrão">
-    <meta name="twitter:description" content="Lançamento de alto padrão em Luís Eduardo Magalhães — BA. Entrega julho/2027.">
-    <meta name="twitter:image" content="https://madridcasaelevada.com/fachada-dia.jpg">
+    <meta name="twitter:title" content="Madrid Casa Elevada — Apartamentos em Luís Eduardo Magalhães (LEM)">
+    <meta name="twitter:description" content="Apartamentos de 1 e 3 suítes em Luís Eduardo Magalhães (LEM) — BA. Entrega julho/2027.">
+    <meta name="twitter:image" content="https://www.madridcasaelevada.com/fachada-dia.jpg">
 
     <meta name="theme-color" content="#1F3324">
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
-    <!-- JSON-LD Schema (RealEstateListing) — ajuda o Google a entender o que é o site -->
+    <!-- JSON-LD (V406, SEO): ajuda o Google a entender o que é o site e ONDE fica.
+         Antes: url/imagem apontavam para a raiz sem www (que redireciona para o app),
+         sem rua, sem coordenadas e com "numberOfBedrooms" num formato que o
+         schema.org não aceita. Coordenadas = pin oficial do Google Maps (Rua Quito).
+         Sem preços aqui de propósito: a tabela não é pública. -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "ApartmentComplex",
-        "name": "Madrid Casa Elevada",
-        "description": "Torre residencial de alto padrão com 50 apartamentos de 1 e 3 suítes no bairro Jardim Sol Nascente, Luís Eduardo Magalhães — BA. Entrega prevista para julho/2027.",
-        "url": "https://madridcasaelevada.com/",
-        "image": "https://madridcasaelevada.com/fachada-dia.jpg",
-        "numberOfAccommodationUnits": 50,
-        "numberOfBedrooms": "1-3",
-        "address": {
-            "@type": "PostalAddress",
-            "streetAddress": "Bairro Jardim Sol Nascente",
-            "addressLocality": "Luís Eduardo Magalhães",
-            "addressRegion": "BA",
-            "addressCountry": "BR"
-        },
-        "amenityFeature": [
-            { "@type": "LocationFeatureSpecification", "name": "Vagas duplas em todas as unidades" },
-            { "@type": "LocationFeatureSpecification", "name": "Escaninho privativo" },
-            { "@type": "LocationFeatureSpecification", "name": "14 andares" },
-            { "@type": "LocationFeatureSpecification", "name": "Alto padrão" }
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": "https://www.madridcasaelevada.com/#site",
+                "url": "https://www.madridcasaelevada.com/landing.html",
+                "name": "Madrid Casa Elevada",
+                "inLanguage": "pt-BR",
+                "publisher": { "@id": "https://www.madridcasaelevada.com/#org" }
+            },
+            {
+                "@type": "Organization",
+                "@id": "https://www.madridcasaelevada.com/#org",
+                "name": "Madrid Casa Elevada",
+                "legalName": "Torre Madrid Empreendimentos Imobiliários SPE Ltda",
+                "url": "https://www.madridcasaelevada.com/landing.html",
+                "logo": "https://www.madridcasaelevada.com/MADRID%20LOGO%20MUSGO-01-01.png",
+                "telephone": "+55 77 98134-6775",
+                "sameAs": ["https://www.instagram.com/madridcasaelevada/"]
+            },
+            {
+                "@type": "ApartmentComplex",
+                "@id": "https://www.madridcasaelevada.com/#madrid",
+                "name": "Madrid Casa Elevada",
+                "description": "Torre residencial de alto padrão com 50 apartamentos de 1 e 3 suítes à venda em Luís Eduardo Magalhães (LEM), Bahia, na Rua Quito, Jardim Sol Nascente. 14 andares, até 4 apartamentos por andar, vagas duplas, escaninho privativo e lazer completo. Entrega prevista para julho/2027.",
+                "url": "https://www.madridcasaelevada.com/landing.html",
+                "image": [
+                    "https://www.madridcasaelevada.com/fachada-dia.jpg",
+                    "https://www.madridcasaelevada.com/fachada-entardecer.jpg",
+                    "https://www.madridcasaelevada.com/area-piscina.jpg"
+                ],
+                "numberOfAccommodationUnits": { "@type": "QuantitativeValue", "value": 50 },
+                "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": "Rua Quito, Jardim Sol Nascente",
+                    "addressLocality": "Luís Eduardo Magalhães",
+                    "addressRegion": "BA",
+                    "addressCountry": "BR"
+                },
+                "geo": { "@type": "GeoCoordinates", "latitude": -12.0786068, "longitude": -45.7844094 },
+                "hasMap": "https://maps.app.goo.gl/gqocq8mGvHNczqG79",
+                "telephone": "+55 77 98134-6775",
+                "amenityFeature": [
+                    { "@type": "LocationFeatureSpecification", "name": "Vagas duplas em todas as unidades", "value": true },
+                    { "@type": "LocationFeatureSpecification", "name": "Escaninho privativo", "value": true },
+                    { "@type": "LocationFeatureSpecification", "name": "Piscina com deck", "value": true },
+                    { "@type": "LocationFeatureSpecification", "name": "Espaço gourmet", "value": true },
+                    { "@type": "LocationFeatureSpecification", "name": "Salão de festas", "value": true },
+                    { "@type": "LocationFeatureSpecification", "name": "Academia", "value": true },
+                    { "@type": "LocationFeatureSpecification", "name": "Coworking", "value": true },
+                    { "@type": "LocationFeatureSpecification", "name": "Bicicletário e oficina de bikes", "value": true }
+                ]
+            },
+            {
+                "@type": "WebPage",
+                "@id": "https://www.madridcasaelevada.com/landing.html#pagina",
+                "url": "https://www.madridcasaelevada.com/landing.html",
+                "name": "Madrid Casa Elevada | Apartamentos em LEM – Luís Eduardo Magalhães",
+                "inLanguage": "pt-BR",
+                "isPartOf": { "@id": "https://www.madridcasaelevada.com/#site" },
+                "about": { "@id": "https://www.madridcasaelevada.com/#madrid" },
+                "publisher": { "@id": "https://www.madridcasaelevada.com/#org" }
+            }
         ]
     }
     </script>
@@ -442,6 +492,31 @@
             box-shadow: var(--shadow-sm); transition: all 0.4s var(--ease);
         }
         .passo-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+        /* ---------- PERGUNTAS FREQUENTES (V406) ---------- */
+        .faq-section { background: var(--brand-cream); }
+        /* O --brand-gold-text mede 4,89:1 no --bg-page, mas só 4,39:1 neste creme
+           (revisão V406) — o eyebrow desta seção usa um tom mais escuro: 5,04:1. */
+        .faq-section .section-eyebrow { color: #7A612F; }
+        .faq-list { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+        .faq-list details { background: #fff; border: 1px solid var(--border-soft); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+        .faq-list summary {
+            cursor: pointer; list-style: none; padding: 18px 22px;
+            display: flex; justify-content: space-between; align-items: center; gap: 16px;
+            font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 600;
+            color: var(--brand-primary); line-height: 1.25;
+        }
+        .faq-list summary::-webkit-details-marker { display: none; }
+        .faq-list summary::after {
+            content: '+'; content: '+' / ''; /* decorativo: fora do nome lido pelo leitor de tela */
+            flex-shrink: 0; font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 22px; font-weight: 500; color: var(--brand-gold-text);
+            transition: transform 0.3s var(--ease);
+        }
+        .faq-list details[open] summary::after { transform: rotate(45deg); }
+        .faq-list summary:focus-visible { outline: 2px solid var(--brand-gold-text); outline-offset: 2px; border-radius: var(--radius); }
+        .faq-list details p { margin: 0; padding: 0 22px 20px; font-size: 14.5px; line-height: 1.7; color: var(--text-secondary); }
+        .faq-list details p a { color: var(--brand-gold-text); text-decoration: underline; text-underline-offset: 3px; }
+        @media (max-width: 768px) { .faq-list summary { font-size: 19px; padding: 16px 18px; } .faq-list details p { padding: 0 18px 18px; } }
         .quem-nota {
             max-width: 680px; margin: 40px auto 0; text-align: center;
             font-size: 15px; line-height: 1.75; color: var(--text-secondary);
@@ -942,6 +1017,7 @@
                (feedback sem movimento). */
             .passo-card, .diff-card { transition: none !important; }
             .passo-card:hover, .diff-card:hover { transform: none !important; }
+            .faq-list summary::after { transition: none !important; }
         }
     </style>
 </head>
@@ -965,7 +1041,7 @@
                 <a href="#como-funciona">Como funciona</a>
                 <a href="#localizacao">Localização</a>
                 <a href="#contato">Contato</a>
-                <a href="index.html?app=1" class="btn-corretor"><i class="fas fa-user-tie"></i> Sou corretor</a>
+                <a href="index.html?app=1" rel="nofollow" class="btn-corretor"><i class="fas fa-user-tie"></i> Sou corretor</a>
             </div>
             <button class="mobile-menu-btn" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu"><i class="fas fa-bars"></i></button>
         </div>
@@ -985,7 +1061,7 @@
         <div class="hero-content">
             <span class="eyebrow">Lançamento Premium</span>
             <h1>Madrid <em>Casa Elevada</em></h1>
-            <p class="lead">14 andares de acabamento de alto padrão no Jardim Sol Nascente, em Luís Eduardo Magalhães. Apartamentos de 1 e 3 suítes com vagas duplas e escaninho privativo. Entrega julho/2027.</p>
+            <p class="lead">14 andares de acabamento de alto padrão no Jardim Sol Nascente, em Luís Eduardo Magalhães (LEM). Apartamentos de 1 e 3 suítes com vagas duplas e escaninho privativo. Entrega julho/2027.</p>
             <div class="cta-row">
                 <a href="#contato" class="btn btn-primary"><i class="fas fa-envelope-open-text"></i> Quero uma proposta</a>
                 <a id="waHeroBtn" href="https://wa.me/5577981346775" target="_blank" rel="noopener noreferrer" class="btn btn-ghost"><i class="fab fa-whatsapp"></i> WhatsApp</a>
@@ -1398,6 +1474,51 @@
         </div>
     </section>
 
+    <!-- ===================== PERGUNTAS FREQUENTES (V406, SEO) =====================
+         Texto de verdade para o Google ler — as mesmas informações que já estão na
+         página, escritas do jeito que a cidade procura ("apartamento em LEM",
+         "imóveis em Luís Eduardo Magalhães"). <details> é nativo: abre no toque e no
+         teclado, sem JS, e o Google lê o conteúdo mesmo fechado. SEM preços. -->
+    <section class="section faq-section" id="perguntas">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-eyebrow">Perguntas frequentes</span>
+                <h2>Apartamentos à venda em LEM: o que você precisa saber</h2>
+                <div class="gold-divider"></div>
+            </div>
+            <div class="faq-list reveal">
+                <details>
+                    <summary>Onde fica o Madrid Casa Elevada?</summary>
+                    <p>Na Rua Quito, no Jardim Sol Nascente, em Luís Eduardo Magalhães (LEM), no oeste da Bahia. O bairro é cercado por restaurantes, comércio e escolas, com acesso fácil às principais vias da cidade — o mapa está logo abaixo.</p>
+                </details>
+                <details>
+                    <summary>Quais apartamentos estão à venda?</summary>
+                    <p>Apartamentos de 1 e 3 suítes numa torre de 14 andares, com até 4 apartamentos por andar — 50 unidades no total. Todas têm 2 vagas de garagem e escaninho privativo. Veja as plantas na seção <a href="#plantas">Plantas</a>.</p>
+                </details>
+                <details>
+                    <summary>Quando é a entrega das chaves?</summary>
+                    <p>A entrega está prevista para julho de 2027. O andamento da obra é atualizado pela engenharia aqui no site, na seção <a href="#obra">Acompanhe a obra</a>.</p>
+                </details>
+                <details>
+                    <summary>Como funciona o pagamento?</summary>
+                    <p>O plano é montado com o consultor: entrada (sinal), parcelas mensais, reforços periódicos (balões) e até permuta, usando um bem seu como parte do pagamento. Até a entrega, a tabela é corrigida todo mês pelo INCC.</p>
+                </details>
+                <details>
+                    <summary>O que tem na área de lazer?</summary>
+                    <p>Piscina com deck, espaço gourmet, salão de festas, academia, coworking, bicicletário e oficina de bikes.</p>
+                </details>
+                <details>
+                    <summary>Quem está por trás do Madrid?</summary>
+                    <p>O Madrid é da Torre Madrid Empreendimentos Imobiliários SPE Ltda, uma empresa criada só para este empreendimento. Conheça quem constrói na seção <a href="#quem-constroi">Quem constrói</a>.</p>
+                </details>
+                <details>
+                    <summary>Como recebo a tabela de preços?</summary>
+                    <p>Peça pelo <a href="#contato">formulário</a> (resposta em até 1 dia útil) ou pelo WhatsApp: um consultor envia a tabela, as plantas e as opções de pagamento.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+
     <!-- ===================== LOCALIZAÇÃO ===================== -->
     <section class="section loc-section" id="localizacao">
         <div class="container">
@@ -1516,6 +1637,7 @@
                     <li><a href="#quem-constroi">Quem constrói</a></li>
                     <li><a href="#obra">Acompanhe a obra</a></li>
                     <li><a href="#como-funciona">Como funciona a compra</a></li>
+                    <li><a href="#perguntas">Perguntas frequentes</a></li>
                     <li><a href="#localizacao">Localização</a></li>
                     <li><a href="#contato">Contato</a></li>
                 </ul>
@@ -1528,12 +1650,12 @@
                          agenda ou repassar pro cônjuge não tinha de onde copiar.
                          O texto é preenchido pelo JS a partir da constante única. -->
                     <li><a id="footFone" href="tel:+5577981346775"><i class="fas fa-phone"></i> <span id="footFoneNum">(77) 9 8134-6775</span></a></li>
-                    <li><i class="fas fa-map-marker-alt"></i> Jardim Sol Nascente — Luís Eduardo Magalhães, BA</li>
+                    <li><i class="fas fa-map-marker-alt"></i> Rua Quito, Jardim Sol Nascente — Luís Eduardo Magalhães (LEM), BA</li>
                     <li><i class="fas fa-calendar-alt"></i> Entrega: julho/2027</li>
                 </ul>
                 <h5 style="margin-top: 22px;">Equipe</h5>
                 <ul>
-                    <li><a href="index.html?app=1"><i class="fas fa-user-tie"></i> Acesso de corretores</a></li>
+                    <li><a href="index.html?app=1" rel="nofollow"><i class="fas fa-user-tie"></i> Acesso de corretores</a></li>
                 </ul>
             </div>
         </div>
@@ -1544,7 +1666,7 @@
             <!-- V395-fix (revisão): a política precisa ser alcançável de qualquer
                  ponto da página, não só pela letra miúda dentro do formulário. -->
             <a href="privacidade.html">Política de privacidade</a> &nbsp;·&nbsp;
-            Site desenvolvido com ❤️ — <a href="index.html?app=1">Sou corretor</a>
+            Site desenvolvido com ❤️ — <a href="index.html?app=1" rel="nofollow">Sou corretor</a>
         </div>
     </footer>
 

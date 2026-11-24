@@ -958,6 +958,40 @@ if (fs.existsSync(planta) && fs.statSync(planta).size > 600 * 1024) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// SEO (V406) — o site ficou FORA do Google (site: = 0 em 24/11/2026) porque a
+// raiz tinha noindex fixo. Estas checagens impedem a volta do problema.
+// ─────────────────────────────────────────────────────────────
+// Só o <head> estático da raiz (até o primeiro <script>): o noindex do modo app
+// é criado pelo JS e aparece no fonte como string, não como tag.
+const headRaiz = idx.slice(0, idx.indexOf('<script'));
+checar('SEO: raiz (index.html) sem <meta robots noindex> fixo',
+    !/<meta[^>]+name=["']robots["'][^>]*noindex/i.test(headRaiz),
+    'o Google descarta a raiz antes de rodar o desvio JS — o site some das buscas');
+checar('SEO: raiz com canonical para a landing',
+    /<link[^>]+rel=["']canonical["'][^>]+href=["']https:\/\/www\.madridcasaelevada\.com\/landing\.html["']/i.test(headRaiz),
+    'sem o canonical a raiz (tela de login no HTML cru) pode ir para as buscas no lugar da landing');
+checar('SEO: modo app coloca o noindex pelo script do desvio',
+    /nr\.content\s*=\s*['"]noindex, nofollow['"]/.test(idx) && /document\.head\.appendChild\(nr\)/.test(idx),
+    'a tela de login dos corretores não pode entrar nas buscas');
+checar('SEO: landing é index,follow e tem canonical próprio',
+    /<meta name="robots" content="index, follow">/.test(lnd) &&
+    /<link rel="canonical" href="https:\/\/www\.madridcasaelevada\.com\/landing\.html">/.test(lnd));
+let jsonLdOk = false;
+try {
+    const blocoLd = lnd.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    jsonLdOk = !!(blocoLd && JSON.parse(blocoLd[1]));
+} catch (e) { jsonLdOk = false; }
+checar('SEO: JSON-LD da landing é JSON válido', jsonLdOk,
+    'JSON-LD quebrado é ignorado inteiro pelo Google — rode JSON.parse no bloco');
+const robotsTxt = fs.existsSync(path.join(DIR, 'robots.txt')) ? ler('robots.txt') : '';
+const sitemapXml = fs.existsSync(path.join(DIR, 'sitemap.xml')) ? ler('sitemap.xml') : '';
+checar('SEO: robots.txt não bloqueia a raiz nem a landing e aponta o sitemap',
+    !/^\s*Disallow:\s*\/\s*$/mi.test(robotsTxt) && !/^\s*Disallow:\s*\/landing/mi.test(robotsTxt) &&
+    /Sitemap:\s*https:\/\/www\.madridcasaelevada\.com\/sitemap\.xml/i.test(robotsTxt));
+checar('SEO: sitemap.xml lista a landing',
+    sitemapXml.includes('<loc>https://www.madridcasaelevada.com/landing.html</loc>'));
+
+// ─────────────────────────────────────────────────────────────
 // RESULTADO
 // ─────────────────────────────────────────────────────────────
 console.log(`\nMadrid Casa Elevada — conferência da V${VERSAO}`);

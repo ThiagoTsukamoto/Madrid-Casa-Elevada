@@ -39,21 +39,28 @@
         <meta name="referrer" content="strict-origin-when-cross-origin">
 
         <!-- Cache gerido pelo parâmetro ?v= no URL (valor = CURRENT_APP_VERSION, mais abaixo) -->
-        <title>Madrid Casa Elevada | Premium V405</title>
+        <title>Madrid Casa Elevada | Premium V406</title>
 
-        <!-- Hint para indexadores: o app interno NÃO deve ser indexado.
-             A landing pública (landing.html) é quem fica nas buscas. -->
-        <meta name="robots" content="noindex, nofollow">
+        <!-- V406 (SEO): a raiz do domínio é ESTE arquivo, e todo visitante sem
+             ?app=1/#agenda (inclusive o robô do Google) é desviado para a landing
+             pelo script logo abaixo. O antigo "noindex, nofollow" fixo aqui fazia o
+             Google DESCARTAR a raiz antes de rodar o JS — ele nunca via o desvio e o
+             site inteiro ficou fora do Google (site:madridcasaelevada.com = 0 em
+             24/11/2026). Agora: canonical para a landing (o endereço que deve
+             aparecer nas buscas) e o noindex só entra quando o APP de fato abre
+             (?app=1 ou #agenda), colocado pelo próprio script do desvio. -->
+        <link rel="canonical" href="https://www.madridcasaelevada.com/landing.html">
 
         <!-- V403 (auditoria): quem compartilha o endereço curto (a raiz do domínio)
              cai AQUI, e os robôs de preview (WhatsApp/Instagram/Facebook) não executam
              o desvio JS para a landing — sem estas metas o cartão do link saía sem foto
-             e com "Premium V###" no título. Espelha as metas da landing. -->
-        <meta name="description" content="Madrid Casa Elevada — Apartamentos premium de 1 e 3 suítes no Jardim Sol Nascente, Luís Eduardo Magalhães — BA. Vagas duplas, escaninho privativo, lazer completo. Entrega julho/2027.">
+             e com "Premium V###" no título. Espelha as metas da landing (V406: textos
+             novos com "LEM" — manter igual à landing ao mudar lá). -->
+        <meta name="description" content="Apartamentos de 1 e 3 suítes à venda em Luís Eduardo Magalhães (LEM), BA: Rua Quito, Jardim Sol Nascente. Vagas duplas, lazer completo, entrega em jul/2027.">
         <meta property="og:type" content="website">
         <meta property="og:locale" content="pt_BR">
         <meta property="og:site_name" content="Madrid Casa Elevada">
-        <meta property="og:title" content="Madrid Casa Elevada — Alto Padrão | Luís Eduardo Magalhães">
+        <meta property="og:title" content="Madrid Casa Elevada — Apartamentos em Luís Eduardo Magalhães (LEM)">
         <meta property="og:description" content="Apartamentos premium de 1 e 3 suítes. Vagas duplas, escaninho privativo, lazer completo. Entrega julho/2027.">
         <meta property="og:image" content="https://www.madridcasaelevada.com/fachada-dia.jpg">
         <meta property="og:image:width" content="1600">
@@ -61,8 +68,8 @@
         <meta property="og:image:alt" content="Fachada da torre Madrid Casa Elevada — 14 andares em Luís Eduardo Magalhães">
         <meta property="og:url" content="https://www.madridcasaelevada.com/landing.html">
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="Madrid Casa Elevada — Alto Padrão">
-        <meta name="twitter:description" content="Lançamento de alto padrão em Luís Eduardo Magalhães — BA. Entrega julho/2027.">
+        <meta name="twitter:title" content="Madrid Casa Elevada — Apartamentos em Luís Eduardo Magalhães (LEM)">
+        <meta name="twitter:description" content="Apartamentos de 1 e 3 suítes em Luís Eduardo Magalhães (LEM) — BA. Entrega julho/2027.">
         <meta name="twitter:image" content="https://www.madridcasaelevada.com/fachada-dia.jpg">
 
         <!-- V405 (auditoria): o carregador de GA4/Meta Pixel saiu do app — a
@@ -113,7 +120,19 @@
                     // deep-link que o app conhece é #agenda (linha do push). Um
                     // endereço colado com /#galeria no fim jogava o CLIENTE na
                     // tela de login dos corretores, e ninguém ficava sabendo.
-                    if (q.has('app') || location.hash === '#agenda') return;
+                    if (q.has('app') || location.hash === '#agenda') {
+                        // V406 (SEO): o app em si (tela de login dos corretores)
+                        // continua fora das buscas — o noindex só existe neste modo.
+                        var nr = document.createElement('meta');
+                        nr.name = 'robots';
+                        nr.content = 'noindex, nofollow';
+                        document.head.appendChild(nr);
+                        // noindex + canonical juntos são sinais contraditórios: no
+                        // modo app sai o canonical (ele só serve para a raiz desviada).
+                        var cn = document.querySelector('link[rel="canonical"]');
+                        if (cn) cn.parentNode.removeChild(cn);
+                        return;
+                    }
                     // Limpa a marca antiga dos navegadores que já a receberam.
                     try { localStorage.removeItem('madrid_equipe'); } catch (e) {}
                     window.__madridIndoLanding = true;
@@ -1073,7 +1092,7 @@
             catch (e) { document.documentElement.innerHTML = ''; /* bloqueia tela */ }
         }
 
-        const CURRENT_APP_VERSION = "405";
+        const CURRENT_APP_VERSION = "406";
         const urlParams = new URLSearchParams(window.location.search);
 
         // O desvio do visitante para a landing acontece lá no <head>, antes dos
@@ -2246,7 +2265,7 @@
         </div>
 
     <script>
-        console.log("LOG: Versão Premium V405");
+        console.log("LOG: Versão Premium V406");
 
         // V371: dicas de toque — clique num ".help-tip" abre o balão com o texto
         // do data-tip; clique em qualquer outro lugar fecha. (title= só existe
